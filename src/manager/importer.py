@@ -229,7 +229,7 @@ def import_from_dir(
 # Helpers                                                                     #
 # ────────────────────────────────────────────────────────────────────────────#
 
-_SKIP_DIRS = {".venv", "venv", "env", "node_modules", "__pycache__", ".git"}
+_SKIP_DIRS = {".venv", "venv", "env", "node_modules", "__pycache__", ".git", "target"}
 _SKIP_SUFFIXES = {".pyc", ".pyo"}
 
 

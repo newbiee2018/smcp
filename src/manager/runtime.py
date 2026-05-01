@@ -71,7 +71,7 @@ def create_env(manifest: SkillManifest) -> None:
     elif rt.type == "node":
         _install_node_deps(skill_dir)
     elif rt.type == "binary":
-        pass  # no env needed
+        _build_binary(manifest)
     else:
         raise ValueError(f"Unknown runtime type: {rt.type!r}")
 
@@ -90,6 +90,10 @@ def remove_env(manifest: SkillManifest) -> None:
         nm = skill_dir / "node_modules"
         if nm.exists():
             shutil.rmtree(nm)
+    elif rt.type == "binary":
+        target = skill_dir / "target"
+        if target.exists():
+            shutil.rmtree(target)
 
 
 def rebuild_env(manifest: SkillManifest) -> None:
@@ -176,6 +180,17 @@ def _venv_pip(venv_dir: Path) -> Path:
         if p.exists():
             return p
     raise RuntimeError(f"Cannot find pip in venv at {venv_dir}")
+
+
+def _build_binary(manifest: SkillManifest) -> None:
+    """Build a binary project (currently supports Rust/cargo)."""
+    skill_dir = manifest.install_path
+    assert skill_dir
+    if (skill_dir / "Cargo.toml").exists():
+        cargo = shutil.which("cargo")
+        if not cargo:
+            return
+        _run([cargo, "build", "--release"], cwd=skill_dir)
 
 
 def _parse_install_args(install_cmd: str) -> List[str]:

@@ -36,6 +36,7 @@ _EXCLUDE = {
     "__pycache__",
     ".git",
     "exports",
+    "target",
 }
 _EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".egg-info"}
 

@@ -37,18 +37,19 @@ CODEX_CONFIG    = Path(os.environ.get("CODEX_CONFIG_PATH",    str(Path.home() / 
 
 def _mcp_entry(manifest: SkillManifest) -> Dict[str, Any]:
     """Build the MCP server entry dict for this skill."""
-    python = manifest.venv_python
-    entrypoint = manifest.entrypoint_path
-
-    if manifest.runtime.type == "python":
+    if manifest.mcp.command:
+        command = manifest.mcp.command
+        args = list(manifest.mcp.args)
+    elif manifest.runtime.type == "python":
+        python = manifest.venv_python
         command = str(python) if python else "python3"
-        args: List[str] = [str(entrypoint)] + manifest.mcp.args
+        args = [str(manifest.entrypoint_path)] + manifest.mcp.args
     elif manifest.runtime.type == "node":
         command = "node"
-        args = [str(entrypoint)] + manifest.mcp.args
+        args = [str(manifest.entrypoint_path)] + manifest.mcp.args
     else:
-        command = str(entrypoint)
-        args = manifest.mcp.args
+        command = str(manifest.entrypoint_path)
+        args = list(manifest.mcp.args)
 
     return {
         "type":    manifest.mcp.transport,

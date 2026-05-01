@@ -1,0 +1,27 @@
+# Integration tests — writable config copies, project source mounted rw
+# Usage:
+#   sg docker -c "docker compose -f docker/docker-compose.integration.yml build"
+#   sg docker -c "docker compose -f docker/docker-compose.integration.yml run integration"
+
+services:
+  integration:
+    build:
+      context: .
+      network: host
+      args:
+        UBUNTU_VERSION: "22.04"
+        NODE_MAJOR: "24"
+    image: smcp-test:ubuntu22.04
+    network_mode: host
+    volumes:
+      # Project source (read-write)
+      - "${PWD}/..:/workspace"
+      # Host configs as read-only source — copied writable at startup
+      - "${HOME}/.claude.json:/tmp/host-claude.json:ro"
+      - "${HOME}/.codex:/tmp/host-codex:ro"
+    working_dir: /workspace
+    environment:
+      - SMCP_INTEGRATION=1
+    entrypoint: ["bash", "/workspace/docker/scripts/run-integration-tests.sh"]
+    stdin_open: true
+    tty: true

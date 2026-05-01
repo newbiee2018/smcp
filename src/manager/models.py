@@ -41,14 +41,18 @@ class McpConfig:
     transport: Literal["stdio", "sse"] = "stdio"
     args: List[str] = field(default_factory=list)
     env: Dict[str, str] = field(default_factory=dict)
+    command: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "entrypoint": self.entrypoint,
             "transport": self.transport,
             "args": self.args,
             "env": self.env,
         }
+        if self.command:
+            d["command"] = self.command
+        return d
 
 
 @dataclass
@@ -108,6 +112,7 @@ class SkillManifest:
                 transport=mc.get("transport", "stdio"),
                 args=mc.get("args", []),
                 env=mc.get("env", {}),
+                command=mc.get("command"),
             ),
             hosts=HostsConfig(
                 claude_code=hc.get("claude_code", True),
