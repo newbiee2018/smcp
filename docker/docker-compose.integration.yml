@@ -15,7 +15,7 @@ services:
     network_mode: host
     volumes:
       # Project source (read-write)
-      - "${PWD}/..:/workspace"
+      - "${PWD}:/workspace"
       # Host configs as read-only source — copied writable at startup
       - "${HOME}/.claude.json:/tmp/host-claude.json:ro"
       - "${HOME}/.codex:/tmp/host-codex:ro"
