@@ -66,7 +66,9 @@ def create_env(manifest: SkillManifest) -> None:
     skill_dir = manifest.install_path
     assert skill_dir, "Skill must have an install_path before creating env."
 
-    if rt.type == "python":
+    if rt.type == "none":
+        return
+    elif rt.type == "python":
         _create_python_venv(manifest)
     elif rt.type == "node":
         _install_node_deps(skill_dir)
@@ -82,7 +84,9 @@ def remove_env(manifest: SkillManifest) -> None:
     skill_dir = manifest.install_path
     assert skill_dir
 
-    if rt.type == "python":
+    if rt.type == "none":
+        return
+    elif rt.type == "python":
         venv = skill_dir / ".venv"
         if venv.exists():
             shutil.rmtree(venv)
@@ -109,7 +113,9 @@ def env_status(manifest: SkillManifest) -> dict:
     if not skill_dir:
         return {"ready": False, "reason": "no install_path"}
 
-    if rt.type == "python":
+    if rt.type == "none":
+        return {"ready": True, "type": "none"}
+    elif rt.type == "python":
         venv = skill_dir / ".venv"
         python = manifest.venv_python
         return {

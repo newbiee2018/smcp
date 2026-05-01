@@ -120,6 +120,7 @@ def cmd_remove(name: str, keep_files: bool):
 
     host_config.unregister(name)
     rt_mgr.remove_env(manifest)
+    importer.post_remove(name)
     if not keep_files and manifest.install_path:
         shutil.rmtree(manifest.install_path, ignore_errors=True)
     reg.unregister(name)
@@ -196,7 +197,7 @@ def cmd_import(package_path: str, install_dir: Optional[str],
 @click.argument("name")
 @click.option("--description", required=True)
 @click.option("--runtime", default="python",
-              type=click.Choice(["python", "node", "binary"]))
+              type=click.Choice(["python", "node", "binary", "none"]))
 @click.option("--author", default="")
 def cmd_create(name: str, description: str, runtime: str, author: str):
     """Scaffold a new skill directory."""

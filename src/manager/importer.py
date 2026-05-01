@@ -241,20 +241,27 @@ def _post_install(manifest: SkillManifest) -> None:
     if not skill_dir:
         return
 
-    # Install Codex native skill (SKILL.md → ~/.codex/skills/<name>/)
+    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
+
+    # Install Codex native skill (SKILL.md)
     codex_skill_src = skill_dir / "skills" / "codex" / "SKILL.md"
+    codex_skills_dir = codex_home / "skills" / manifest.name
     if codex_skill_src.exists():
-        codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
-        codex_skills_dir = codex_home / "skills" / manifest.name
         codex_skills_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(codex_skill_src, codex_skills_dir / "SKILL.md")
+    else:
+        codex_skills_dir.mkdir(parents=True, exist_ok=True)
+        (codex_skills_dir / "SKILL.md").write_text(_generate_skill_md(manifest))
 
-    # Install Claude Code native skill (CLAUDE.md → ~/.claude/skills/<name>/)
+    # Install Claude Code native skill (CLAUDE.md)
     claude_skill_src = skill_dir / "skills" / "claude" / "CLAUDE.md"
+    claude_skills_dir = Path.home() / ".claude" / "skills" / manifest.name
     if claude_skill_src.exists():
-        claude_skills_dir = Path.home() / ".claude" / "skills" / manifest.name
         claude_skills_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(claude_skill_src, claude_skills_dir / "CLAUDE.md")
+    else:
+        claude_skills_dir.mkdir(parents=True, exist_ok=True)
+        (claude_skills_dir / "CLAUDE.md").write_text(_generate_claude_md(manifest))
 
     # Install CLI wrapper if the skill has a cli.py
     cli_py = skill_dir / "src" / "cli.py"
@@ -262,7 +269,6 @@ def _post_install(manifest: SkillManifest) -> None:
         bin_dir = Path.home() / ".local" / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
         wrapper = bin_dir / manifest.name.replace("-", "").replace("_", "")
-        # Use a more user-friendly name: smcp
         if manifest.name == "skill-mcp-protocol":
             wrapper = bin_dir / "smcp"
         wrapper.write_text(
@@ -270,6 +276,72 @@ def _post_install(manifest: SkillManifest) -> None:
             f'exec "{manifest.venv_python}" "{cli_py}" "$@"\n'
         )
         wrapper.chmod(0o755)
+
+
+def post_remove(name: str) -> None:
+    """Remove native skill entries from Codex and Claude Code skill dirs."""
+    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
+    for skill_dir in [
+        codex_home / "skills" / name,
+        Path.home() / ".claude" / "skills" / name,
+    ]:
+        if skill_dir.exists():
+            shutil.rmtree(skill_dir)
+
+
+def _generate_skill_md(manifest: SkillManifest) -> str:
+    """Generate a Codex SKILL.md from manifest metadata."""
+    tags = ", ".join(manifest.tags) if manifest.tags else "mcp"
+    rt = manifest.runtime.type
+    lines = [
+        "---",
+        f"name: {manifest.name}",
+        f"description: {manifest.description}",
+        "metadata:",
+        f"  short-description: {manifest.description}",
+        "---",
+        "",
+        f"# {manifest.name}",
+        "",
+        manifest.description,
+        "",
+        f"- **Version**: {manifest.version}",
+        f"- **Runtime**: {rt}",
+        f"- **Tags**: {tags}",
+        "",
+    ]
+    if rt != "none":
+        lines += [
+            "## MCP Server",
+            "",
+            f"This skill runs as an MCP server (transport: {manifest.mcp.transport}).",
+            f"Entrypoint: `{manifest.mcp.entrypoint}`",
+            "",
+        ]
+    return "\n".join(lines)
+
+
+def _generate_claude_md(manifest: SkillManifest) -> str:
+    """Generate a Claude Code CLAUDE.md from manifest metadata."""
+    rt = manifest.runtime.type
+    lines = [
+        f"# {manifest.name}",
+        "",
+        manifest.description,
+        "",
+        f"- **Version**: {manifest.version}",
+        f"- **Runtime**: {rt}",
+        "",
+    ]
+    if rt != "none":
+        lines += [
+            "## MCP Server",
+            "",
+            f"This skill provides MCP tools via {manifest.mcp.transport} transport.",
+            f"Entrypoint: `{manifest.mcp.entrypoint}`",
+            "",
+        ]
+    return "\n".join(lines)
 
 
 # ────────────────────────────────────────────────────────────────────────── #

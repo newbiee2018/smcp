@@ -194,7 +194,7 @@ async def list_tools() -> List[types.Tool]:
                     "description": {"type": "string"},
                     "runtime":     {
                         "type": "string",
-                        "enum": ["python", "node", "binary"],
+                        "enum": ["python", "node", "binary", "none"],
                         "default": "python",
                     },
                     "author":      {"type": "string", "default": ""},
@@ -332,6 +332,7 @@ async def _dispatch(name: str, args: Dict[str, Any]) -> Any:
 
         host_config.unregister(skill_name)
         rt_mgr.remove_env(manifest)
+        importer.post_remove(skill_name)
 
         if not keep_files and manifest.install_path:
             import shutil

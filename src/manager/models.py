@@ -21,7 +21,7 @@ import tomli_w
 
 @dataclass
 class RuntimeConfig:
-    type: Literal["python", "node", "binary"]
+    type: Literal["python", "node", "binary", "none"]
     python_version: Optional[str] = None
     node_version: Optional[str] = None
     install_cmd: str = ""

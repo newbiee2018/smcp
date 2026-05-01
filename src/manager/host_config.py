@@ -143,8 +143,13 @@ def is_registered_codex(name: str) -> bool:
 def register(manifest: SkillManifest, targets: Optional[List[str]] = None) -> Dict[str, bool]:
     """
     Register a skill to specified hosts (default: all enabled in manifest).
+    Description-only skills (runtime.type="none") skip MCP registration
+    but still get native skill entries via _post_install.
     Returns {host: success} mapping.
     """
+    if manifest.runtime.type == "none":
+        return {"claude_code": True, "codex": True}
+
     want = set(targets) if targets else set()
     if not want:
         if manifest.hosts.claude_code:
