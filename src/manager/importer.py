@@ -16,6 +16,7 @@ and decides to install programmatically via the MCP tool `skill_import`.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tarfile
 from dataclasses import dataclass
@@ -146,6 +147,9 @@ def import_skill(
     reg.register(manifest)
     reg.mark_env_ready(skill_name, env_created)
 
+    # ── Step 8: Install native skill entries + CLI wrapper ─────────────
+    _post_install(manifest)
+
     return ImportResult(
         success=True,
         skill_name=skill_name,
@@ -215,6 +219,8 @@ def import_from_dir(
     reg.register(manifest)
     reg.mark_env_ready(skill_name, env_created)
 
+    _post_install(manifest)
+
     return ImportResult(
         success=True,
         skill_name=skill_name,
@@ -223,6 +229,47 @@ def import_from_dir(
         hosts_registered=hosts_registered,
         message=f"Skill '{skill_name}' v{manifest.version} installed from {source_dir}",
     )
+
+
+# ────────────────────────────────────────────────────────────────────────── #
+# Post-install: native skill entries + CLI wrapper                             #
+# ────────────────────────────────────────────────────────────────────────────#
+
+def _post_install(manifest: SkillManifest) -> None:
+    """Install native skill entries for Codex and Claude Code, plus CLI wrapper."""
+    skill_dir = manifest.install_path
+    if not skill_dir:
+        return
+
+    # Install Codex native skill (SKILL.md → ~/.codex/skills/<name>/)
+    codex_skill_src = skill_dir / "skills" / "codex" / "SKILL.md"
+    if codex_skill_src.exists():
+        codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
+        codex_skills_dir = codex_home / "skills" / manifest.name
+        codex_skills_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(codex_skill_src, codex_skills_dir / "SKILL.md")
+
+    # Install Claude Code native skill (CLAUDE.md → ~/.claude/skills/<name>/)
+    claude_skill_src = skill_dir / "skills" / "claude" / "CLAUDE.md"
+    if claude_skill_src.exists():
+        claude_skills_dir = Path.home() / ".claude" / "skills" / manifest.name
+        claude_skills_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(claude_skill_src, claude_skills_dir / "CLAUDE.md")
+
+    # Install CLI wrapper if the skill has a cli.py
+    cli_py = skill_dir / "src" / "cli.py"
+    if cli_py.exists() and manifest.venv_python:
+        bin_dir = Path.home() / ".local" / "bin"
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        wrapper = bin_dir / manifest.name.replace("-", "").replace("_", "")
+        # Use a more user-friendly name: smcp
+        if manifest.name == "skill-mcp-protocol":
+            wrapper = bin_dir / "smcp"
+        wrapper.write_text(
+            f"#!/usr/bin/env bash\n"
+            f'exec "{manifest.venv_python}" "{cli_py}" "$@"\n'
+        )
+        wrapper.chmod(0o755)
 
 
 # ────────────────────────────────────────────────────────────────────────── #
