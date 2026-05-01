@@ -1,0 +1,14 @@
+# Virtual environments — NEVER export these, rebuild on target host
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+
+# Export artifacts (large, regenerate with: smcp export)
+exports/*.tar.gz
+
+# Local registry is host-specific
+# (registry/index.toml is tracked as empty template)

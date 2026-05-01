@@ -1,0 +1,25 @@
+[skill]
+name        = "skill-mcp-protocol"
+version     = "0.1.0"
+description = """
+The unified protocol and MCP server for managing AI skills and MCP servers.
+Supports install, update, remove, export, and import of skills with automatic
+runtime (venv) management and host auto-registration for Claude Code and Codex.
+This skill IS the protocol — bootstrap it first on any new host to gain the
+ability to manage all other skills via natural language or MCP tool calls.
+"""
+author = "kiritsugu"
+tags   = ["meta", "management", "protocol", "bootstrap"]
+
+[runtime]
+type           = "python"
+python_version = "3.8"
+install_cmd    = "pip install -r requirements.txt"
+
+[mcp]
+entrypoint = "src/main.py"
+transport  = "stdio"
+
+[hosts]
+claude_code = true
+codex       = true

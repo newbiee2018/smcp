@@ -1,0 +1,141 @@
+{
+  "_comment": "Machine-readable setup instructions for AI agents (Claude Code, Codex). Read this file and execute setup_steps in order to install the skill on this host.",
+  "protocol": "skill-mcp-protocol",
+  "protocol_version": "1.0",
+  "format_version": "1.0",
+  "exported_at": "{{ export_date }}",
+
+  "skill": {
+    "name":        "{{ manifest.name }}",
+    "version":     "{{ manifest.version }}",
+    "description": {{ manifest.description | tojson }},
+    "author":      "{{ manifest.author }}",
+    "tags":        {{ manifest.tags | tojson }},
+    "runtime":     "{{ manifest.runtime.type }}"
+  },
+
+  "agent_instructions": "You are an AI agent (Claude Code or Codex). Read the setup_steps array below and execute each step in order using your shell/tool-use capabilities. Resolve all {variable} placeholders before executing. The goal is to install this skill on this host, create its isolated runtime environment, and register it as an MCP server so future sessions can use it.",
+
+  "variables": {
+    "skill_dir":    "MUST_SET — absolute path to the directory where you extracted this package",
+    "venv_dir":     "{skill_dir}/.venv",
+    "venv_python":  "Linux/macOS: {skill_dir}/.venv/bin/python  |  Windows: {skill_dir}/.venv/Scripts/python.exe",
+    "venv_pip":     "Linux/macOS: {skill_dir}/.venv/bin/pip     |  Windows: {skill_dir}/.venv/Scripts/pip.exe",
+    "entrypoint":   "{skill_dir}/{{ manifest.mcp.entrypoint }}"
+  },
+
+  "setup_steps": [
+    {
+      "id":          "check_runtime",
+      "type":        "check_runtime",
+      "description": "Verify the required runtime is available on this host.",
+      {% if manifest.runtime.type == "python" %}
+      "runtime":     "python",
+      "min_version": "{{ manifest.runtime.python_version or '3.10' }}",
+      "check_command": "python3 --version",
+      "on_fail":     "Install Python {{ manifest.runtime.python_version or '3.10' }}+ via your system package manager (apt, brew, winget, etc.) before proceeding."
+      {% elif manifest.runtime.type == "node" %}
+      "runtime":     "node",
+      "min_version": "18.0",
+      "check_command": "node --version",
+      "on_fail":     "Install Node.js 18+ before proceeding."
+      {% else %}
+      "runtime":     "binary",
+      "on_fail":     "No extra runtime needed."
+      {% endif %}
+    },
+    {% if manifest.runtime.type == "python" %}
+    {
+      "id":          "create_venv",
+      "type":        "run_command",
+      "description": "Create an isolated Python virtual environment. Do NOT skip — each skill needs its own env.",
+      "command":     "python3 -m venv {skill_dir}/.venv",
+      "on_exists":   "skip — if {skill_dir}/.venv already exists, skip this step."
+    },
+    {
+      "id":          "upgrade_pip",
+      "type":        "run_command",
+      "description": "Upgrade pip inside the venv.",
+      "command":     "{venv_pip} install --upgrade pip --quiet"
+    },
+    {
+      "id":          "install_deps",
+      "type":        "run_command",
+      "description": "Install all Python dependencies into the venv.",
+      "command":     "{venv_pip} install -r {skill_dir}/requirements.txt --quiet"
+    },
+    {% elif manifest.runtime.type == "node" %}
+    {
+      "id":          "install_node_deps",
+      "type":        "run_command",
+      "description": "Install Node.js dependencies.",
+      "command":     "npm install",
+      "cwd":         "{skill_dir}"
+    },
+    {% endif %}
+    {% if manifest.hosts.claude_code %}
+    {
+      "id":          "register_claude_code",
+      "type":        "register_host",
+      "description": "Register this skill as an MCP server in Claude Code. Edit ~/.claude.json and add the entry below under 'mcpServers'.",
+      "host":        "claude_code",
+      "config_file": "~/.claude.json",
+      "config_key":  "mcpServers",
+      "entry_key":   "{{ manifest.name }}",
+      "entry_value": {
+        "type":    "{{ manifest.mcp.transport }}",
+        "command": "{venv_python}",
+        "args":    ["{entrypoint}"],
+        "env":     {{ manifest.mcp.env | tojson }}
+      },
+      "note": "Replace {venv_python} and {entrypoint} with their resolved absolute paths."
+    },
+    {% endif %}
+    {% if manifest.hosts.codex %}
+    {
+      "id":          "register_codex",
+      "type":        "register_host",
+      "description": "Register this skill as an MCP server in Codex. Edit ~/.codex/config.toml and add the block below.",
+      "host":        "codex",
+      "config_file": "~/.codex/config.toml",
+      "toml_block":  "[mcp_servers.{{ manifest.name }}]\ncommand = \"{venv_python}\"\nargs    = [\"{entrypoint}\"]\n",
+      "note": "Replace {venv_python} and {entrypoint} with their resolved absolute paths."
+    },
+    {% endif %}
+    {
+      "id":          "verify",
+      "type":        "verify",
+      "description": "Confirm the skill is working by running the entrypoint.",
+      "command":     "{venv_python} {entrypoint} --help",
+      "on_fail":     "Check that all previous steps completed successfully and that the entrypoint path is correct."
+    }
+  ],
+
+  "teardown_steps": [
+    {
+      "id":          "unregister_claude",
+      "type":        "unregister_host",
+      "host":        "claude_code",
+      "description": "Remove '{{ manifest.name }}' from mcpServers in ~/.claude.json"
+    },
+    {
+      "id":          "unregister_codex",
+      "type":        "unregister_host",
+      "host":        "codex",
+      "description": "Remove [mcp_servers.{{ manifest.name }}] from ~/.codex/config.toml"
+    },
+    {
+      "id":          "remove_env",
+      "type":        "run_command",
+      "description": "Delete the virtual environment.",
+      "command":     "rm -rf {skill_dir}/.venv"
+    },
+    {
+      "id":          "remove_files",
+      "type":        "run_command",
+      "description": "Optionally delete the skill directory entirely.",
+      "command":     "rm -rf {skill_dir}",
+      "optional":    true
+    }
+  ]
+}

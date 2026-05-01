@@ -1,0 +1,24 @@
+[skill]
+name        = "{{ name }}"
+version     = "0.1.0"
+description = "{{ description }}"
+author      = "{{ author }}"
+tags        = []
+
+[runtime]
+type           = "{{ runtime }}"
+{% if runtime == "python" %}
+python_version = "3.10"
+install_cmd    = "pip install -r requirements.txt"
+{% elif runtime == "node" %}
+node_version   = "18"
+install_cmd    = "npm install"
+{% endif %}
+
+[mcp]
+entrypoint = "src/main.py"
+transport  = "stdio"
+
+[hosts]
+claude_code = true
+codex       = true

@@ -1,0 +1,8 @@
+# Local development registry — tracks skills in this workspace.
+# This file is for reference only.
+# The live registry is at: ~/.local/share/skill-mcp/registry.toml
+#
+# Run `smcp list` to see the real installed skills.
+
+[skills]
+# (empty — populated automatically by smcp install / smcp import)

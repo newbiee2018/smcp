@@ -1,0 +1,98 @@
+# {{ manifest.name }} — Setup Guide
+
+> **Version:** {{ manifest.version }}  
+> **Author:** {{ manifest.author }}  
+> **Runtime:** {{ manifest.runtime.type }}{% if manifest.runtime.python_version %} {{ manifest.runtime.python_version }}+{% endif %}
+
+## Description
+
+{{ manifest.description }}
+
+---
+
+## Prerequisites
+
+{% if manifest.runtime.type == "python" %}
+- Python {{ manifest.runtime.python_version or "3.10" }}+ installed and on PATH
+- `pip` available (comes with Python)
+{% elif manifest.runtime.type == "node" %}
+- Node.js 18+ and npm installed
+{% elif manifest.runtime.type == "binary" %}
+- No extra runtime required (binary skill)
+{% endif %}
+
+---
+
+## Install Steps
+
+### 1 · Extract the package
+
+```bash
+tar -xzf {{ manifest.name }}-{{ manifest.version }}.skill.tar.gz
+cd {{ manifest.name }}-{{ manifest.version }}
+```
+
+### 2 · Create the runtime environment
+
+{% if manifest.runtime.type == "python" %}
+```bash
+python{{ manifest.runtime.python_version or "3" }} -m venv .venv
+```
+
+### 3 · Install dependencies
+
+```bash
+# Linux / macOS
+.venv/bin/pip install -r requirements.txt
+
+# Windows
+.venv\Scripts\pip install -r requirements.txt
+```
+{% elif manifest.runtime.type == "node" %}
+```bash
+npm install
+```
+{% endif %}
+
+### 4 · Register with Claude Code
+
+Add the following to `~/.claude.json` under `mcpServers`:
+
+```json
+"{{ manifest.name }}": {
+  "type": "{{ manifest.mcp.transport }}",
+  "command": "/ABSOLUTE/PATH/.venv/bin/python",
+  "args": ["/ABSOLUTE/PATH/{{ manifest.mcp.entrypoint }}"]
+}
+```
+
+### 5 · Register with Codex
+
+Add the following to `~/.codex/config.toml` under `[mcp_servers]`:
+
+```toml
+[mcp_servers.{{ manifest.name }}]
+command = "/ABSOLUTE/PATH/.venv/bin/python"
+args    = ["/ABSOLUTE/PATH/{{ manifest.mcp.entrypoint }}"]
+```
+
+---
+
+## Automated Setup
+
+If you have `skill-mcp-protocol` installed, an AI agent (Claude Code or Codex)
+can perform these steps automatically by reading `agent-setup.json` in this package.
+
+```
+smcp import ./{{ manifest.name }}-{{ manifest.version }}.skill.tar.gz
+```
+
+---
+
+## Uninstall
+
+```bash
+smcp remove {{ manifest.name }}
+# or manually:
+rm -rf .venv   # removes env only
+```

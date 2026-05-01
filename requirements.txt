@@ -1,0 +1,11 @@
+# MCP server (requires Python >=3.10 — mcp library uses match statements and TypeAlias)
+mcp>=1.0.0; python_version >= "3.10"
+
+# Core manager + CLI (Python >=3.8 compatible)
+tomli-w>=1.0.0
+jinja2>=3.0.0
+click>=8.0.0
+packaging>=21.0
+
+# tomllib is built-in for Python >=3.11; backport for 3.8–3.10
+tomli>=2.0.0; python_version < "3.11"

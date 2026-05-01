@@ -1,0 +1,55 @@
+# skill-mcp-protocol — multi-Ubuntu test matrix (Ubuntu 20.04+, Python ≥3.8)
+# Usage:
+#   sg docker -c "docker compose -f docker/docker-compose.yml build"
+#   sg docker -c "docker compose -f docker/docker-compose.yml run ubuntu22 test-env"
+#   sg docker -c "docker compose -f docker/docker-compose.yml run ubuntu22 bash"
+#
+# Config files are bind-mounted read-only from the host — keys never baked into images.
+
+x-common: &common
+  build:
+    context: .
+    args:
+      NODE_MAJOR: "24"
+    # Use host network during build so apt/npm can reach internet through host VPN/proxy
+    network: host
+  # Also use host network at runtime for the same reason
+  network_mode: host
+  volumes:
+    # Mount host configs into container (same auth as host)
+    - "${HOME}/.claude.json:/root/.claude.json:ro"
+    - "${HOME}/.codex:/root/.codex:ro"
+  working_dir: /workspace
+  stdin_open: true
+  tty: true
+
+services:
+  ubuntu20:
+    <<: *common
+    build:
+      context: .
+      network: host
+      args:
+        UBUNTU_VERSION: "20.04"
+        NODE_MAJOR: "24"
+    image: smcp-test:ubuntu20.04
+
+  ubuntu22:
+    <<: *common
+    build:
+      context: .
+      network: host
+      args:
+        UBUNTU_VERSION: "22.04"
+        NODE_MAJOR: "24"
+    image: smcp-test:ubuntu22.04
+
+  ubuntu24:
+    <<: *common
+    build:
+      context: .
+      network: host
+      args:
+        UBUNTU_VERSION: "24.04"
+        NODE_MAJOR: "24"
+    image: smcp-test:ubuntu24.04
