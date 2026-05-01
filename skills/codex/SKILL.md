@@ -2,7 +2,7 @@
 name: skill-mcp-protocol
 description: Install, manage, export, and import MCP servers and AI skills with isolated runtime environments. Use this skill when a user asks to install an MCP server, manage skills, or set up a new tool.
 metadata:
-  short-description: Manage MCP servers and skills with isolated runtimes
+  short-description: Manage MCP servers and skills via the smcp CLI
 ---
 
 # Skill MCP Protocol
@@ -19,49 +19,44 @@ Use this skill when the user asks to:
 
 ## How to Install a Skill
 
-This skill provides MCP tools. Call them directly:
+Use the `smcp` CLI. All commands output structured JSON.
 
 ### From a GitHub URL
 
-1. Clone the repo locally:
-   ```bash
-   git clone --depth 1 <url> /tmp/skill-clone
-   ```
+```bash
+git clone --depth 1 <url> /tmp/skill-clone
+smcp install /tmp/skill-clone
+```
 
-2. If the repo has no `skill.toml`, create one (see format below).
-
-3. Call the MCP tool:
-   ```
-   skill_install(source="/tmp/skill-clone")
-   ```
+If the repo has no `skill.toml`, create one first (see format below).
 
 ### From a local directory
 
-```
-skill_install(source="/path/to/skill-dir")
+```bash
+smcp install /path/to/skill-dir
 ```
 
 ### From a .skill.tar.gz archive
 
-```
-skill_import(package_path="/path/to/skill.tar.gz")
+```bash
+smcp import /path/to/skill.tar.gz
 ```
 
-## Available MCP Tools
+## CLI Commands
 
-| Tool | Description |
-|------|-------------|
-| `skill_list` | List all installed skills |
-| `skill_info` | Get details about a skill |
-| `skill_install` | Install from local dir or archive |
-| `skill_import` | Import a .skill.tar.gz archive |
-| `skill_export` | Export a skill to portable archive |
-| `skill_remove` | Uninstall a skill |
-| `skill_create` | Scaffold a new skill from templates |
-| `skill_register` | Re-register with Claude Code / Codex |
-| `skill_unregister` | Remove from host configs (keep files) |
-| `skill_rebuild_env` | Recreate runtime environment |
-| `protocol_info` | Full protocol description and paths |
+| Command | Description |
+|---------|-------------|
+| `smcp list` | List all installed skills |
+| `smcp info <name>` | Get details about a skill |
+| `smcp install <path>` | Install from local dir or archive |
+| `smcp remove <name>` | Uninstall a skill |
+| `smcp update <name>` | Rebuild env in-place or from new source |
+| `smcp export <name>` | Export to portable .skill.tar.gz |
+| `smcp import <archive>` | Import a .skill.tar.gz archive |
+| `smcp create <name> --description "..."` | Scaffold a new skill |
+| `smcp register <name>` | Re-register with Claude Code / Codex |
+| `smcp unregister <name>` | Remove from host configs (keep files) |
+| `smcp rebuild-env <name>` | Recreate runtime environment |
 
 ## skill.toml Format
 
@@ -76,7 +71,7 @@ author = "name"
 tags = ["mcp"]
 
 [runtime]
-type = "python"  # or "node" or "binary"
+type = "python"  # or "node", "binary", "none"
 install_cmd = "pip install -r requirements.txt"
 
 [mcp]
@@ -86,18 +81,6 @@ transport = "stdio"
 [hosts]
 claude_code = true
 codex = true
-```
-
-## CLI
-
-The `smcp` command is also available:
-
-```bash
-smcp list
-smcp info <name>
-smcp install <path>
-smcp export <name>
-smcp remove <name>
 ```
 
 ## Key Paths

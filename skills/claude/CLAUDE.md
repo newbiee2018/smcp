@@ -1,33 +1,44 @@
 # skill-mcp-protocol
 
-This host has the skill-mcp-protocol MCP server installed. It manages MCP servers and AI skills with isolated runtime environments.
+This host has the `smcp` CLI installed for managing MCP servers and AI skills with isolated runtime environments.
 
 ## Installing a new skill
 
-To install an MCP server or skill, use the MCP tools provided by `skill-mcp-protocol`:
+Use shell commands to install skills:
 
-1. **From a GitHub repo**: Clone it, then call `skill_install`:
-   ```
+1. **From a GitHub repo**:
+   ```bash
    git clone --depth 1 <github-url> /tmp/skill-clone
+   smcp install /tmp/skill-clone
    ```
-   Then use the `skill_install` MCP tool with `source: "/tmp/skill-clone"`.
 
-2. **From a local directory**: Call `skill_install` with the path.
+2. **From a local directory**:
+   ```bash
+   smcp install /path/to/skill-dir
+   ```
 
-3. **From an archive**: Call `skill_import` with the `.skill.tar.gz` path.
+3. **From an archive**:
+   ```bash
+   smcp import /path/to/skill.tar.gz
+   ```
 
-If the repo has no `skill.toml`, create one first (see `protocol_info` tool for the format).
+If the repo has no `skill.toml`, create one first. See `smcp create` for scaffolding.
 
-## Available MCP tools
+## CLI commands
 
-- `skill_list` — list installed skills
-- `skill_info` — details about a skill
-- `skill_install` — install from local path or archive
-- `skill_import` — import a .skill.tar.gz
-- `skill_export` — export to portable archive
-- `skill_remove` — uninstall
-- `skill_create` — scaffold new skill
-- `protocol_info` — full protocol docs
+```
+smcp list                          # list installed skills
+smcp info <name>                   # details about a skill
+smcp install <path>                # install from local dir or archive
+smcp remove <name>                 # uninstall
+smcp update <name>                 # rebuild env or update from new source
+smcp export <name>                 # export to portable archive
+smcp import <archive>              # import a .skill.tar.gz
+smcp create <name> --description   # scaffold new skill
+smcp register <name>               # re-register with host configs
+smcp unregister <name>             # remove from host configs
+smcp rebuild-env <name>            # recreate runtime environment
+```
 
 ## Key rule
 

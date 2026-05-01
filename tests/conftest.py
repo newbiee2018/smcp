@@ -1,5 +1,10 @@
 """
-Shared fixtures for integration tests.
+Shared fixtures for tests.
+
+IMPORTANT: The `_guard_real_configs` fixture runs automatically for every test
+session.  It redirects CLAUDE_CONFIG_PATH, CODEX_CONFIG_PATH, CODEX_HOME, and
+HOME to temp paths so that a broken test can never pollute the user's real
+~/.claude.json, ~/.codex/config.toml, or native skill directories.
 """
 import importlib
 import json
@@ -10,6 +15,57 @@ from pathlib import Path
 
 import pytest
 
+
+# ────────────────────────────────────────────────────────────────────────── #
+# Session-level guard: redirect all config writes to temp dir                 #
+# ────────────────────────────────────────────────────────────────────────────#
+
+@pytest.fixture(autouse=True, scope="session")
+def _guard_real_configs(tmp_path_factory):
+    """
+    Prevents any test from writing to real host configs.
+    Sets env vars BEFORE any manager module is imported.
+    """
+    guard_dir = tmp_path_factory.mktemp("config_guard")
+
+    claude_json = guard_dir / "claude.json"
+    claude_json.write_text("{}")
+
+    codex_dir = guard_dir / "codex"
+    codex_dir.mkdir()
+    codex_toml = codex_dir / "config.toml"
+    codex_toml.write_text("")
+
+    codex_home = guard_dir / "codex_home"
+    codex_home.mkdir()
+
+    fake_home = guard_dir / "fakehome"
+    fake_home.mkdir()
+
+    saved = {}
+    guard_vars = {
+        "CLAUDE_CONFIG_PATH": str(claude_json),
+        "CODEX_CONFIG_PATH": str(codex_toml),
+        "CODEX_HOME": str(codex_home),
+        "XDG_DATA_HOME": str(guard_dir / "data"),
+        "XDG_CONFIG_HOME": str(guard_dir / "config"),
+    }
+    for k, v in guard_vars.items():
+        saved[k] = os.environ.get(k)
+        os.environ[k] = v
+
+    yield
+
+    for k, v in saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
+# ────────────────────────────────────────────────────────────────────────── #
+# Per-test isolated environment                                               #
+# ────────────────────────────────────────────────────────────────────────────#
 
 @pytest.fixture
 def isolated_smcp_env(tmp_path):
@@ -43,8 +99,8 @@ def isolated_smcp_env(tmp_path):
         old_env[k] = os.environ.get(k)
         os.environ[k] = v
 
-    import src.manager.registry as reg_mod
-    import src.manager.host_config as hc_mod
+    import manager.registry as reg_mod
+    import manager.host_config as hc_mod
     reg_mod._registry = None
     importlib.reload(reg_mod)
     importlib.reload(hc_mod)
