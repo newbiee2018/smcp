@@ -1,3 +1,8 @@
+---
+name: skill-mcp-protocol
+description: Manage MCP servers and AI skills with isolated runtimes via the smcp CLI
+---
+
 # skill-mcp-protocol
 
 This host has the `smcp` CLI installed for managing MCP servers and AI skills with isolated runtime environments.

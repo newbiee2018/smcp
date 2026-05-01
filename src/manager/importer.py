@@ -253,15 +253,15 @@ def _post_install(manifest: SkillManifest) -> None:
         codex_skills_dir.mkdir(parents=True, exist_ok=True)
         (codex_skills_dir / "SKILL.md").write_text(_generate_skill_md(manifest))
 
-    # Install Claude Code native skill (CLAUDE.md)
-    claude_skill_src = skill_dir / "skills" / "claude" / "CLAUDE.md"
+    # Install Claude Code native skill (SKILL.md)
+    claude_skill_src = skill_dir / "skills" / "claude" / "SKILL.md"
     claude_skills_dir = Path.home() / ".claude" / "skills" / manifest.name
     if claude_skill_src.exists():
         claude_skills_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(claude_skill_src, claude_skills_dir / "CLAUDE.md")
+        shutil.copy2(claude_skill_src, claude_skills_dir / "SKILL.md")
     else:
         claude_skills_dir.mkdir(parents=True, exist_ok=True)
-        (claude_skills_dir / "CLAUDE.md").write_text(_generate_claude_md(manifest))
+        (claude_skills_dir / "SKILL.md").write_text(_generate_claude_md(manifest))
 
     # Install CLI wrapper if the skill has a cli.py
     cli_py = skill_dir / "src" / "cli.py"
@@ -322,12 +322,18 @@ def _generate_skill_md(manifest: SkillManifest) -> str:
 
 
 def _generate_claude_md(manifest: SkillManifest) -> str:
-    """Generate a Claude Code CLAUDE.md from manifest metadata."""
+    """Generate a Claude Code SKILL.md from manifest metadata."""
+    desc = manifest.description or f"Skill: {manifest.name}"
     rt = manifest.runtime.type
     lines = [
+        "---",
+        f"name: {manifest.name}",
+        f"description: {desc[:200]}",
+        "---",
+        "",
         f"# {manifest.name}",
         "",
-        manifest.description,
+        desc,
         "",
         f"- **Version**: {manifest.version}",
         f"- **Runtime**: {rt}",

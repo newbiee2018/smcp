@@ -228,17 +228,17 @@ class TestCLIWorkflow:
             "MCP entry should point to per-skill venv python"
 
     def test_cli_native_entries_created_on_install(self):
-        """smcp install creates SKILL.md and CLAUDE.md in native dirs."""
+        """smcp install creates SKILL.md in native dirs."""
         skill_dir = _make_test_skill(self.tmp, "native-test", "python")
         _smcp("install", str(skill_dir), env=self.cli_env)
 
         codex_home = self.tmp / "codex_home"
         fakehome = self.tmp / "fakehome"
         codex_skill = codex_home / "skills" / "native-test" / "SKILL.md"
-        claude_skill = fakehome / ".claude" / "skills" / "native-test" / "CLAUDE.md"
+        claude_skill = fakehome / ".claude" / "skills" / "native-test" / "SKILL.md"
 
         assert codex_skill.exists(), f"SKILL.md should exist at {codex_skill}"
-        assert claude_skill.exists(), f"CLAUDE.md should exist at {claude_skill}"
+        assert claude_skill.exists(), f"SKILL.md should exist at {claude_skill}"
 
     def test_cli_native_entries_removed_on_remove(self):
         """smcp remove also cleans native skill entries."""
@@ -409,7 +409,7 @@ class TestSelfUninstall:
         codex_home = self.tmp / "codex_home"
         fakehome = self.tmp / "fakehome"
         assert (codex_home / "skills" / "skill-mcp-protocol" / "SKILL.md").exists()
-        assert (fakehome / ".claude" / "skills" / "skill-mcp-protocol" / "CLAUDE.md").exists()
+        assert (fakehome / ".claude" / "skills" / "skill-mcp-protocol" / "SKILL.md").exists()
 
         # CLI wrapper (smcp)
         assert (fakehome / ".local" / "bin" / "smcp").exists()

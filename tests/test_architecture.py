@@ -1,7 +1,7 @@
 """
 Tests for architecture invariants discovered during development:
 - runtime.type="none" (description-only skills)
-- Native skill entries (SKILL.md / CLAUDE.md) created on install, removed on uninstall
+- Native skill entries (SKILL.md) created on install, removed on uninstall
 - CLI wrapper creation
 - Per-skill venv isolation
 - Existing host configs preserved during install/remove
@@ -192,7 +192,7 @@ class TestRuntimeTypeNoneHostConfig(_IsolatedEnvMixin, unittest.TestCase):
 
 
 # ──────────────────────────────────────────────────────────────────────────── #
-# Native skill entries (SKILL.md / CLAUDE.md)                                  #
+# Native skill entries (SKILL.md)                                  #
 # ──────────────────────────────────────────────────────────────────────────── #
 
 class TestNativeSkillEntries(_IsolatedEnvMixin, unittest.TestCase):
@@ -218,7 +218,7 @@ class TestNativeSkillEntries(_IsolatedEnvMixin, unittest.TestCase):
         m = SkillManifest.from_toml(skill_dir / "skill.toml")
         m.install_path = skill_dir
         importer._post_install(m)
-        claude_skill = self.claude_home / ".claude" / "skills" / "gen-test" / "CLAUDE.md"
+        claude_skill = self.claude_home / ".claude" / "skills" / "gen-test" / "SKILL.md"
         self.assertTrue(claude_skill.exists())
         content = claude_skill.read_text()
         self.assertIn("gen-test", content)
@@ -266,7 +266,7 @@ class TestNativeSkillEntries(_IsolatedEnvMixin, unittest.TestCase):
         m = SkillManifest.from_toml(skill_dir / "skill.toml")
         m.install_path = skill_dir
         importer._post_install(m)
-        claude_skill = self.claude_home / ".claude" / "skills" / "mcp-test" / "CLAUDE.md"
+        claude_skill = self.claude_home / ".claude" / "skills" / "mcp-test" / "SKILL.md"
         content = claude_skill.read_text()
         self.assertIn("MCP Server", content)
         self.assertIn("stdio", content)
@@ -483,7 +483,7 @@ class TestImportFromDirNativeEntries(_IsolatedEnvMixin, unittest.TestCase):
         result = importer.import_from_dir(skill_dir, rebuild_env=False, register_hosts=True)
         self.assertTrue(result.success)
         codex_skill = self.codex_home / "skills" / "desc-skill" / "SKILL.md"
-        claude_skill = self.claude_home / ".claude" / "skills" / "desc-skill" / "CLAUDE.md"
+        claude_skill = self.claude_home / ".claude" / "skills" / "desc-skill" / "SKILL.md"
         self.assertTrue(codex_skill.exists())
         self.assertTrue(claude_skill.exists())
 
