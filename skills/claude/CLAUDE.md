@@ -40,6 +40,33 @@ smcp unregister <name>             # remove from host configs
 smcp rebuild-env <name>            # recreate runtime environment
 ```
 
+## MCP server mode (optional)
+
+By default, skill-mcp-protocol is CLI-only. To enable MCP server mode:
+
+```bash
+smcp register skill-mcp-protocol --hosts claude_code --hosts codex
+```
+
+This exposes MCP tools (`skill_install`, `skill_list`, `skill_remove`, etc.) as an alternative to CLI commands.
+
+## Manual installation
+
+```bash
+git clone <repo-url> /tmp/skill-mcp-protocol
+cd /tmp/skill-mcp-protocol
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python src/cli.py install .
+```
+
+## Uninstallation
+
+```bash
+smcp remove skill-mcp-protocol
+rm ~/.local/bin/smcp
+```
+
 ## Key rule
 
 Each skill gets its own isolated runtime (`.venv/` for Python, `node_modules/` for Node.js). Exports never include runtime artifacts — they are rebuilt on import.

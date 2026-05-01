@@ -58,6 +58,20 @@ smcp import /path/to/skill.tar.gz
 | `smcp unregister <name>` | Remove from host configs (keep files) |
 | `smcp rebuild-env <name>` | Recreate runtime environment |
 
+## Alternative: MCP Server Mode
+
+By default, skill-mcp-protocol is CLI-only. To also enable MCP server mode (structured tool calls instead of shell commands):
+
+```bash
+smcp register skill-mcp-protocol --hosts claude_code --hosts codex
+```
+
+This adds skill-mcp-protocol as an MCP server in host configs, exposing tools like `skill_install`, `skill_list`, `skill_remove`, etc. To revert to CLI-only:
+
+```bash
+smcp unregister skill-mcp-protocol --hosts claude_code --hosts codex
+```
+
 ## skill.toml Format
 
 Every managed skill needs a `skill.toml`:
@@ -79,8 +93,36 @@ entrypoint = "src/main.py"
 transport = "stdio"
 
 [hosts]
-claude_code = true
-codex = true
+claude_code = true   # register as MCP server in Claude Code
+codex = true         # register as MCP server in Codex
+```
+
+## Manual Installation
+
+```bash
+git clone <repo-url> /tmp/skill-mcp-protocol
+cd /tmp/skill-mcp-protocol
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# Install CLI wrapper
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/smcp << 'EOF'
+#!/usr/bin/env bash
+exec "/tmp/skill-mcp-protocol/.venv/bin/python" "/tmp/skill-mcp-protocol/src/cli.py" "$@"
+EOF
+chmod +x ~/.local/bin/smcp
+
+# Or let smcp install itself properly:
+.venv/bin/python src/cli.py install /tmp/skill-mcp-protocol
+```
+
+## Uninstallation
+
+```bash
+smcp remove skill-mcp-protocol
+# Also remove CLI wrapper:
+rm ~/.local/bin/smcp
 ```
 
 ## Key Paths

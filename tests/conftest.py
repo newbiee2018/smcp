@@ -99,11 +99,7 @@ def isolated_smcp_env(tmp_path):
         old_env[k] = os.environ.get(k)
         os.environ[k] = v
 
-    import manager.registry as reg_mod
-    import manager.host_config as hc_mod
-    reg_mod._registry = None
-    importlib.reload(reg_mod)
-    importlib.reload(hc_mod)
+    _reload_manager_modules()
 
     yield {
         "data_home": data_home,
@@ -119,9 +115,22 @@ def isolated_smcp_env(tmp_path):
             os.environ.pop(k, None)
         else:
             os.environ[k] = v
-    reg_mod._registry = None
-    importlib.reload(reg_mod)
-    importlib.reload(hc_mod)
+    _reload_manager_modules()
+
+
+def _reload_manager_modules():
+    """Reload all variants of registry/host_config modules (manager.* and src.manager.*)."""
+    import sys as _sys
+    for prefix in ("manager", "src.manager"):
+        reg_name = f"{prefix}.registry"
+        hc_name = f"{prefix}.host_config"
+        if reg_name in _sys.modules:
+            mod = _sys.modules[reg_name]
+            if hasattr(mod, "_registry"):
+                mod._registry = None
+            importlib.reload(mod)
+        if hc_name in _sys.modules:
+            importlib.reload(_sys.modules[hc_name])
 
 
 @pytest.fixture

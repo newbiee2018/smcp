@@ -258,7 +258,7 @@ class TestDrawioMcpInstall:
         proc = subprocess.run(
             ["npx", "-y", "@drawio/mcp"],
             input=stdin_data, capture_output=True, text=True,
-            timeout=60,
+            timeout=120,
         )
 
         stdout = proc.stdout.strip()

@@ -16,7 +16,7 @@ services:
     volumes:
       # Project source (read-write)
       - "${PWD}:/workspace"
-      # Host configs as read-only source — copied writable at startup
+      # Host configs as read-only source (optional — templates used as fallback)
       - "${HOME}/.claude.json:/tmp/host-claude.json:ro"
       - "${HOME}/.codex:/tmp/host-codex:ro"
     working_dir: /workspace

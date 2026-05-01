@@ -17,8 +17,9 @@ cd "${REPO}"
 
 # Install test deps if not already available
 # --break-system-packages needed on Ubuntu 24.04+ (PEP 668)
-"${PYTHON}" -m pip install --quiet tomli-w tomli jinja2 click packaging pytest 2>/dev/null || \
-"${PYTHON}" -m pip install --quiet --break-system-packages tomli-w tomli jinja2 click packaging pytest 2>/dev/null || true
+"${PYTHON}" -m pip install --quiet tomli-w tomli jinja2 click packaging pytest 2>/dev/null \
+  || "${PYTHON}" -m pip install --quiet --break-system-packages tomli-w tomli jinja2 click packaging pytest 2>/dev/null \
+  || true
 
 # Discover and run all test_*.py files
 "${PYTHON}" -m pytest tests/ -v --tb=short 2>/dev/null || \
