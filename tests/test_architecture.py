@@ -282,6 +282,144 @@ class TestNativeSkillEntries(_IsolatedEnvMixin, unittest.TestCase):
 
 
 # ──────────────────────────────────────────────────────────────────────────── #
+# Skill discovery format (Claude Code & Codex require specific format)         #
+# ──────────────────────────────────────────────────────────────────────────── #
+
+class TestSkillDiscoveryFormat(_IsolatedEnvMixin, unittest.TestCase):
+    """Verify installed skill files match host discovery requirements.
+
+    Claude Code: ~/.claude/skills/<name>/SKILL.md with YAML frontmatter (name, description)
+    Codex: ~/.codex/skills/<name>/SKILL.md with YAML frontmatter
+    """
+
+    def setUp(self):
+        self._setup_isolated_env()
+
+    def tearDown(self):
+        self._teardown_isolated_env()
+
+    def _parse_frontmatter(self, content):
+        """Extract YAML frontmatter from markdown content."""
+        if not content.startswith("---"):
+            return None
+        end = content.index("---", 3)
+        fm_text = content[3:end].strip()
+        result = {}
+        for line in fm_text.split("\n"):
+            if ":" in line and not line.startswith(" "):
+                key, val = line.split(":", 1)
+                result[key.strip()] = val.strip()
+        return result
+
+    def test_claude_skill_file_named_skill_md(self):
+        """Claude Code requires SKILL.md, not CLAUDE.md."""
+        skill_dir = _make_skill(self.tmp / "skills", "disc-test", runtime_type="python")
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        skill_md = self.claude_home / ".claude" / "skills" / "disc-test" / "SKILL.md"
+        claude_md = self.claude_home / ".claude" / "skills" / "disc-test" / "CLAUDE.md"
+        self.assertTrue(skill_md.exists(), "SKILL.md must exist for Claude Code discovery")
+        self.assertFalse(claude_md.exists(), "CLAUDE.md should not exist (wrong filename)")
+
+    def test_claude_skill_has_required_frontmatter(self):
+        """Claude Code needs frontmatter with name and description."""
+        skill_dir = _make_skill(self.tmp / "skills", "fm-claude", runtime_type="python")
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        content = (self.claude_home / ".claude" / "skills" / "fm-claude" / "SKILL.md").read_text()
+        fm = self._parse_frontmatter(content)
+        self.assertIsNotNone(fm, "SKILL.md must have YAML frontmatter")
+        self.assertIn("name", fm, "frontmatter must have 'name'")
+        self.assertIn("description", fm, "frontmatter must have 'description'")
+        self.assertEqual(fm["name"], "fm-claude")
+
+    def test_claude_skill_description_under_200_chars(self):
+        """Claude Code truncates description at 200 chars."""
+        skill_dir = _make_skill(self.tmp / "skills", "long-desc", runtime_type="none")
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.description = "A" * 300
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        content = (self.claude_home / ".claude" / "skills" / "long-desc" / "SKILL.md").read_text()
+        fm = self._parse_frontmatter(content)
+        self.assertLessEqual(len(fm["description"]), 200)
+
+    def test_codex_skill_has_frontmatter(self):
+        """Codex SKILL.md also needs frontmatter."""
+        skill_dir = _make_skill(self.tmp / "skills", "fm-codex", runtime_type="python")
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        content = (self.codex_home / "skills" / "fm-codex" / "SKILL.md").read_text()
+        fm = self._parse_frontmatter(content)
+        self.assertIsNotNone(fm, "Codex SKILL.md must have YAML frontmatter")
+        self.assertIn("name", fm)
+        self.assertIn("description", fm)
+
+    def test_custom_claude_skill_md_preserved(self):
+        """When skill ships skills/claude/SKILL.md, it is copied as-is."""
+        skill_dir = _make_skill(self.tmp / "skills", "custom-claude", runtime_type="none")
+        custom_dir = skill_dir / "skills" / "claude"
+        custom_dir.mkdir(parents=True)
+        custom_content = "---\nname: custom-claude\ndescription: Custom skill\n---\n\n# Custom\nHand-written instructions.\n"
+        (custom_dir / "SKILL.md").write_text(custom_content)
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        installed = self.claude_home / ".claude" / "skills" / "custom-claude" / "SKILL.md"
+        self.assertTrue(installed.exists())
+        self.assertEqual(installed.read_text(), custom_content)
+
+    def test_none_runtime_skill_discoverable(self):
+        """Description-only skills (runtime=none) must also be discoverable."""
+        skill_dir = _make_skill(self.tmp / "skills", "none-disc", runtime_type="none")
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        for path in [
+            self.claude_home / ".claude" / "skills" / "none-disc" / "SKILL.md",
+            self.codex_home / "skills" / "none-disc" / "SKILL.md",
+        ]:
+            self.assertTrue(path.exists(), f"{path} must exist")
+            content = path.read_text()
+            self.assertTrue(content.startswith("---"), f"{path} must have frontmatter")
+
+    def test_shipped_skill_md_has_valid_format(self):
+        """The skill-mcp-protocol's own shipped SKILL.md must be valid."""
+        shipped = Path(__file__).resolve().parent.parent / "skills" / "claude" / "SKILL.md"
+        self.assertTrue(shipped.exists(), "skills/claude/SKILL.md must exist in repo")
+        content = shipped.read_text()
+        fm = self._parse_frontmatter(content)
+        self.assertIsNotNone(fm, "shipped SKILL.md must have frontmatter")
+        self.assertIn("name", fm)
+        self.assertIn("description", fm)
+        self.assertEqual(fm["name"], "skill-mcp-protocol")
+
+    def test_no_claude_md_created_anywhere(self):
+        """Ensure no CLAUDE.md is created in skill dirs (wrong filename)."""
+        skill_dir = _make_skill(self.tmp / "skills", "no-wrong", runtime_type="python")
+        m = SkillManifest.from_toml(skill_dir / "skill.toml")
+        m.install_path = skill_dir
+        importer._post_install(m)
+
+        claude_dir = self.claude_home / ".claude" / "skills" / "no-wrong"
+        codex_dir = self.codex_home / "skills" / "no-wrong"
+        for d in [claude_dir, codex_dir]:
+            if d.exists():
+                files = [f.name for f in d.iterdir()]
+                self.assertNotIn("CLAUDE.md", files,
+                                 f"CLAUDE.md should not exist in {d}")
+
+
+# ──────────────────────────────────────────────────────────────────────────── #
 # CLI wrapper creation                                                         #
 # ──────────────────────────────────────────────────────────────────────────── #
 

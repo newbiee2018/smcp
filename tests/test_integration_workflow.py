@@ -258,6 +258,79 @@ class TestCLIWorkflow:
         assert not codex_skill_dir.exists(), "Native codex entry should be removed"
         assert not claude_skill_dir.exists(), "Native claude entry should be removed"
 
+    def test_cli_installed_skill_discoverable_by_claude(self):
+        """Installed skill must be discoverable: SKILL.md with frontmatter."""
+        skill_dir = _make_test_skill(self.tmp, "discover-test", "python")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        fakehome = self.tmp / "fakehome"
+        skill_md = fakehome / ".claude" / "skills" / "discover-test" / "SKILL.md"
+        assert skill_md.exists(), "SKILL.md must exist for Claude Code"
+
+        content = skill_md.read_text()
+        assert content.startswith("---"), "SKILL.md must have YAML frontmatter"
+        assert "name:" in content, "frontmatter must contain name"
+        assert "description:" in content, "frontmatter must contain description"
+        assert "discover-test" in content
+
+        # Must NOT have CLAUDE.md (wrong filename)
+        claude_md = fakehome / ".claude" / "skills" / "discover-test" / "CLAUDE.md"
+        assert not claude_md.exists(), "CLAUDE.md must not exist (wrong filename)"
+
+    def test_cli_installed_skill_discoverable_by_codex(self):
+        """Installed skill must be discoverable by Codex: SKILL.md with frontmatter."""
+        skill_dir = _make_test_skill(self.tmp, "codex-disc", "python")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        codex_home = self.tmp / "codex_home"
+        skill_md = codex_home / "skills" / "codex-disc" / "SKILL.md"
+        assert skill_md.exists(), "SKILL.md must exist for Codex"
+
+        content = skill_md.read_text()
+        assert content.startswith("---"), "SKILL.md must have YAML frontmatter"
+        assert "name:" in content
+        assert "description:" in content
+
+    def test_cli_none_runtime_skill_discoverable(self):
+        """Description-only skills must also produce discoverable SKILL.md."""
+        skill_dir = _make_test_skill(self.tmp, "none-disc", "none", hosts_mcp=False)
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        fakehome = self.tmp / "fakehome"
+        codex_home = self.tmp / "codex_home"
+
+        for path in [
+            fakehome / ".claude" / "skills" / "none-disc" / "SKILL.md",
+            codex_home / "skills" / "none-disc" / "SKILL.md",
+        ]:
+            assert path.exists(), f"{path} must exist"
+            content = path.read_text()
+            assert content.startswith("---"), f"{path} must have frontmatter"
+
+    def test_cli_mcp_entry_valid_for_claude_mcp_list(self):
+        """MCP entry in claude.json must have fields that 'claude mcp list' expects."""
+        skill_dir = _make_test_skill(self.tmp, "mcp-valid", "python", hosts_mcp=True)
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        claude_data = json.loads(self.env["claude_json"].read_text())
+        entry = claude_data["mcpServers"]["mcp-valid"]
+        assert "command" in entry, "MCP entry must have 'command'"
+        assert "args" in entry, "MCP entry must have 'args'"
+        assert isinstance(entry["args"], list)
+        assert Path(entry["command"]).name == "python" or "python" in entry["command"], \
+            "command should be the venv python"
+        assert any("main.py" in a for a in entry["args"]), \
+            "args should include the entrypoint"
+
+    def test_cli_mcp_entry_valid_for_codex(self):
+        """MCP entry in codex config.toml must be valid."""
+        skill_dir = _make_test_skill(self.tmp, "codex-mcp", "python", hosts_mcp=True)
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        codex_content = self.env["codex_toml"].read_text()
+        assert "codex-mcp" in codex_content, \
+            "Skill must appear in codex config"
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # B) MCP server workflow — tool calls via stdio protocol
