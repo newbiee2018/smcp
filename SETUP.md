@@ -3,6 +3,10 @@
 > The unified manager for AI skills and MCP servers.  
 > Bootstrap **this** protocol first on any new host — then use it to manage all other skills.
 
+## License
+
+This repository is licensed under the MIT License. See [LICENSE](LICENSE).
+
 ---
 
 ## What This Is
