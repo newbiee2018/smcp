@@ -5,15 +5,15 @@ description = """
 Unified CLI tool for managing AI skills and MCP servers.
 Supports install, update, remove, export, and import of skills with automatic
 runtime (venv) management and host auto-registration for Claude Code and Codex.
-AI agents discover this tool via native skill entries (SKILL.md / CLAUDE.md)
+AI agents discover this tool via native skill entries (SKILL.md)
 and use the `smcp` CLI for all operations.
 """
-author = "kiritsugu"
+author = "newbiee2018"
 tags   = ["meta", "management", "protocol", "bootstrap"]
 
 [runtime]
 type           = "python"
-python_version = "3.8"
+python_version = "3.10"
 install_cmd    = "pip install -r requirements.txt"
 
 [mcp]

@@ -274,8 +274,6 @@ def cmd_rebuild_env(name: str):
     click.echo(click.style(f"✓ Env rebuilt for '{name}'.", fg="green"))
 
 
-# ── Fix missing Optional import ──────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     cli()

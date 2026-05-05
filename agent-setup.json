@@ -1,26 +1,21 @@
 {
-  "_comment": "Machine-readable bootstrap instructions for AI agents (Claude Code, Codex). This file bootstraps the skill-mcp-protocol itself — the meta-skill that manages all other skills. Read this file first on any new host, execute setup_steps in order, and you will have the protocol running as an MCP server.",
+  "_comment": "Machine-readable bootstrap instructions for AI agents (Claude Code, Codex). Execute setup_steps in order to install the smcp CLI on any new host.",
   "protocol": "skill-mcp-protocol",
   "protocol_version": "1.0",
   "format_version": "1.0",
 
   "skill": {
     "name":        "skill-mcp-protocol",
-    "version":     "0.1.0",
-    "description": "Unified manager for AI skills and MCP servers. Bootstrap this first to gain skill_install, skill_export, skill_import and related tools.",
-    "author":      "kiritsugu",
+    "version":     "0.2.0",
+    "description": "Unified CLI tool for managing AI skills and MCP servers with isolated runtimes.",
+    "author":      "newbiee2018",
     "runtime":     "python"
   },
 
-  "agent_instructions": "You are an AI agent (Claude Code or Codex). This file tells you how to bootstrap the skill-mcp-protocol on this host. Execute each step in setup_steps using your shell/tool-use capabilities. Resolve all {variable} placeholders before executing. After completing all steps, the protocol will be available as an MCP server and you can use its tools (skill_install, skill_export, etc.) to manage further skills.",
+  "agent_instructions": "You are an AI agent (Claude Code or Codex). This file tells you how to bootstrap the smcp CLI on this host. Execute each step in setup_steps using your shell capabilities. After completing all steps, the `smcp` command will be available in PATH and you can use it to install, manage, and remove AI skills and MCP servers.",
 
   "variables": {
-    "repo_dir":     "MUST_SET — absolute path to this repository (where skill.toml lives)",
-    "install_dir":  "~/.local/share/skill-mcp/skills/skill-mcp-protocol",
-    "venv_dir":     "{install_dir}/.venv",
-    "venv_python":  "Linux/macOS: {install_dir}/.venv/bin/python  |  Windows: {install_dir}/.venv/Scripts/python.exe",
-    "venv_pip":     "Linux/macOS: {install_dir}/.venv/bin/pip     |  Windows: {install_dir}/.venv/Scripts/pip.exe",
-    "entrypoint":   "{install_dir}/src/main.py"
+    "repo_dir": "MUST_SET — absolute path to this repository (where skill.toml lives)"
   },
 
   "setup_steps": [
@@ -33,94 +28,39 @@
       "on_fail":       "Install Python 3.10+ via your system package manager (apt install python3, brew install python, winget install Python.Python.3) before proceeding."
     },
     {
-      "id":          "create_install_dir",
+      "id":          "install",
       "type":        "run_command",
-      "description": "Create the global install directory for this skill.",
-      "command":     "mkdir -p {install_dir}"
-    },
-    {
-      "id":          "copy_files",
-      "type":        "run_command",
-      "description": "Copy the repo files (excluding .venv, __pycache__) to the global install dir.",
-      "command":     "rsync -a --exclude='.venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='node_modules' {repo_dir}/ {install_dir}/",
-      "alt_command": "cp -r {repo_dir}/. {install_dir}/  (then manually remove .venv if present)"
-    },
-    {
-      "id":          "create_venv",
-      "type":        "run_command",
-      "description": "Create an isolated Python virtual environment inside the install dir.",
-      "command":     "python3 -m venv {install_dir}/.venv",
-      "on_exists":   "skip — if {install_dir}/.venv already exists, skip this step."
-    },
-    {
-      "id":          "upgrade_pip",
-      "type":        "run_command",
-      "description": "Upgrade pip inside the venv.",
-      "command":     "{venv_pip} install --upgrade pip --quiet"
-    },
-    {
-      "id":          "install_deps",
-      "type":        "run_command",
-      "description": "Install all Python dependencies into the venv.",
-      "command":     "{venv_pip} install -r {install_dir}/requirements.txt --quiet"
-    },
-    {
-      "id":          "register_claude_code",
-      "type":        "register_host",
-      "description": "Register this skill as an MCP server in Claude Code. Add the JSON entry below to 'mcpServers' in ~/.claude.json (create the file if absent).",
-      "host":        "claude_code",
-      "config_file": "~/.claude.json",
-      "config_key":  "mcpServers",
-      "entry_key":   "skill-mcp-protocol",
-      "entry_value": {
-        "type":    "stdio",
-        "command": "{venv_python}",
-        "args":    ["{entrypoint}"],
-        "env":     {}
-      },
-      "python_snippet": "import json,pathlib; cfg=pathlib.Path('~/.claude.json').expanduser(); d=json.loads(cfg.read_text()) if cfg.exists() else {}; d.setdefault('mcpServers',{})['skill-mcp-protocol']={'type':'stdio','command':'{venv_python}','args':['{entrypoint}'],'env':{}}; cfg.write_text(json.dumps(d,indent=2))"
-    },
-    {
-      "id":          "register_codex",
-      "type":        "register_host",
-      "description": "Register this skill as an MCP server in Codex. Add the TOML block below to ~/.codex/config.toml (create if absent).",
-      "host":        "codex",
-      "config_file": "~/.codex/config.toml",
-      "toml_block":  "[mcp_servers.skill-mcp-protocol]\ncommand = \"{venv_python}\"\nargs    = [\"{entrypoint}\"]\n",
-      "shell_snippet": "mkdir -p ~/.codex && printf '[mcp_servers.skill-mcp-protocol]\\ncommand = \"{venv_python}\"\\nargs    = [\"{entrypoint}\"]\\n' >> ~/.codex/config.toml"
+      "description": "Install skill-mcp-protocol using its own CLI. This copies files, creates a venv, installs deps, creates native skill entries (SKILL.md), and installs the smcp wrapper to ~/.local/bin/.",
+      "command":     "python3 {repo_dir}/src/cli.py install {repo_dir}",
+      "note":        "If smcp is already in PATH, you can also run: smcp install {repo_dir}"
     },
     {
       "id":          "verify",
       "type":        "verify",
-      "description": "Quick sanity check — import the manager module.",
-      "command":     "{venv_python} -c \"import sys; sys.path.insert(0,'{install_dir}/src'); from manager.registry import get_registry; print('skill-mcp-protocol OK')\"",
-      "on_fail":     "Re-run install_deps step. If it still fails, check that {install_dir}/requirements.txt exists and that Python 3.10+ is in use."
+      "description": "Verify smcp CLI is available.",
+      "command":     "smcp list",
+      "on_fail":     "Ensure ~/.local/bin is in PATH. Run: export PATH=\"$HOME/.local/bin:$PATH\""
     }
   ],
 
   "teardown_steps": [
     {
-      "id":          "unregister_claude",
-      "type":        "unregister_host",
-      "host":        "claude_code",
-      "description": "Remove 'skill-mcp-protocol' from mcpServers in ~/.claude.json"
-    },
-    {
-      "id":          "unregister_codex",
-      "type":        "unregister_host",
-      "host":        "codex",
-      "description": "Remove [mcp_servers.skill-mcp-protocol] block from ~/.codex/config.toml"
-    },
-    {
-      "id":          "remove_env",
+      "id":          "remove",
       "type":        "run_command",
-      "command":     "rm -rf {install_dir}/.venv"
+      "description": "Remove skill-mcp-protocol and clean all native entries.",
+      "command":     "smcp remove skill-mcp-protocol"
     },
     {
-      "id":          "remove_files",
+      "id":          "remove_cli",
       "type":        "run_command",
-      "command":     "rm -rf {install_dir}",
-      "optional":    true
+      "description": "Remove the smcp CLI wrapper.",
+      "command":     "rm -f ~/.local/bin/smcp"
     }
-  ]
+  ],
+
+  "mcp_server_mode": {
+    "_comment": "MCP server mode is opt-in. By default, skill-mcp-protocol is CLI-only.",
+    "enable":  "smcp register skill-mcp-protocol --hosts claude_code --hosts codex",
+    "disable": "smcp unregister skill-mcp-protocol --hosts claude_code --hosts codex"
+  }
 }

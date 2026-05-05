@@ -6,9 +6,10 @@ __pycache__/
 *.pyc
 *.pyo
 node_modules/
+.pytest_cache/
+*.egg-info/
+dist/
+.env
 
 # Export artifacts (large, regenerate with: smcp export)
 exports/*.tar.gz
-
-# Local registry is host-specific
-# (registry/index.toml is tracked as empty template)

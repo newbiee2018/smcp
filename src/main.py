@@ -461,7 +461,7 @@ async def _dispatch(name: str, args: Dict[str, Any]) -> Any:
     if name == "protocol_info":
         return {
             "name":    "skill-mcp-protocol",
-            "version": "0.1.0",
+            "version": "0.2.0",
             "purpose": (
                 "Unified manager for AI skills and MCP servers. "
                 "Each skill is a self-contained directory with skill.toml, source code, "
@@ -475,11 +475,9 @@ async def _dispatch(name: str, args: Dict[str, Any]) -> Any:
                 "registry": str(SKILL_MCP_DATA / "registry.toml"),
             },
             "bootstrap_this_protocol": {
-                "step_1": "Read agent-setup.json in this repo",
-                "step_2": "Create venv: python3 -m venv .venv",
-                "step_3": "Install deps: .venv/bin/pip install -r requirements.txt",
-                "step_4": "Register with Claude Code (see agent-setup.json → register_claude_code)",
-                "step_5": "Register with Codex (see agent-setup.json → register_codex)",
+                "step_1": "Clone or download this repo",
+                "step_2": "Run: python3 src/cli.py install .",
+                "step_3": "Verify: smcp list",
                 "automated": "Or just run: bash bootstrap.sh",
             },
             "available_tools": [

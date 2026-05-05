@@ -1,145 +1,63 @@
 #!/usr/bin/env bash
 # ============================================================
-# bootstrap.sh — bootstraps skill-mcp-protocol on a new host.
+# bootstrap.sh — installs skill-mcp-protocol on a new host.
 #
 # This is the human/script-friendly version of agent-setup.json.
-# An AI agent should prefer reading agent-setup.json directly.
+# AI agents should prefer reading agent-setup.json directly.
 #
 # Usage:
 #   chmod +x bootstrap.sh
-#   ./bootstrap.sh [--install-dir /absolute/path] [--no-register]
+#   ./bootstrap.sh
 #
-# Defaults:
-#   install-dir : ~/.local/share/skill-mcp/skills/skill-mcp-protocol
-#   register    : yes (Claude Code + Codex)
+# After running, the `smcp` CLI is available at ~/.local/bin/smcp.
 # ============================================================
 set -euo pipefail
 
-# ── Defaults ──────────────────────────────────────────────────────────────
-XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-DEFAULT_INSTALL="$XDG_DATA_HOME/skill-mcp/skills/skill-mcp-protocol"
-INSTALL_DIR="$DEFAULT_INSTALL"
-REGISTER=true
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# ── Arg parsing ───────────────────────────────────────────────────────────
-for arg in "$@"; do
-  case $arg in
-    --install-dir=*) INSTALL_DIR="${arg#*=}" ;;
-    --no-register)   REGISTER=false ;;
-    -h|--help)
-      echo "Usage: $0 [--install-dir=<path>] [--no-register]"
-      exit 0
-      ;;
-  esac
-done
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
 echo "║      skill-mcp-protocol  bootstrap               ║"
 echo "╚══════════════════════════════════════════════════╝"
-echo "  Repo dir    : $REPO_DIR"
-echo "  Install dir : $INSTALL_DIR"
-echo "  Register    : $REGISTER"
+echo "  Repo dir : $REPO_DIR"
 echo ""
 
 # ── Step 1: Check Python ──────────────────────────────────────────────────
-echo "[1/6] Checking Python 3.10+ ..."
+echo "[1/3] Checking Python 3.10+ ..."
 if ! command -v python3 &>/dev/null; then
   echo "ERROR: python3 not found on PATH." >&2
   echo "       Install Python 3.10+ and re-run." >&2
   exit 1
 fi
 PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PY_MIN=$(python3 -c "import sys; print(1 if sys.version_info >= (3, 10) else 0)")
+if [ "$PY_MIN" = "0" ]; then
+  echo "ERROR: Python 3.10+ required, found $PY_VER." >&2
+  exit 1
+fi
 echo "      Found Python $PY_VER"
 
-# ── Step 2: Copy files to global install dir ─────────────────────────────
-echo "[2/6] Copying files to $INSTALL_DIR ..."
-mkdir -p "$INSTALL_DIR"
-if command -v rsync &>/dev/null; then
-  rsync -a \
-    --exclude='.venv' \
-    --exclude='__pycache__' \
-    --exclude='*.pyc' \
-    --exclude='node_modules' \
-    --exclude='.git' \
-    "$REPO_DIR/" "$INSTALL_DIR/"
+# ── Step 2: Install via smcp CLI ──────────────────────────────────────────
+echo "[2/3] Installing skill-mcp-protocol ..."
+python3 "$REPO_DIR/src/cli.py" install "$REPO_DIR"
+
+# ── Step 3: Verify ────────────────────────────────────────────────────────
+echo "[3/3] Verifying installation ..."
+export PATH="$HOME/.local/bin:$PATH"
+if command -v smcp &>/dev/null; then
+  smcp list
+  echo ""
+  echo "╔══════════════════════════════════════════════════════════════════╗"
+  echo "║  skill-mcp-protocol is ready!                                   ║"
+  echo "║                                                                  ║"
+  echo "║  The smcp CLI is installed at ~/.local/bin/smcp                  ║"
+  echo "║  Make sure ~/.local/bin is in your PATH.                         ║"
+  echo "║                                                                  ║"
+  echo "║  Try: smcp list                                                  ║"
+  echo "║       smcp install <path-to-skill>                               ║"
+  echo "╚══════════════════════════════════════════════════════════════════╝"
 else
-  cp -r "$REPO_DIR/." "$INSTALL_DIR/"
-  rm -rf "$INSTALL_DIR/.venv" "$INSTALL_DIR/__pycache__"
+  echo "WARNING: smcp not found in PATH." >&2
+  echo "         Add ~/.local/bin to your PATH:" >&2
+  echo "         export PATH=\"\$HOME/.local/bin:\$PATH\"" >&2
 fi
-
-# ── Step 3: Create venv ───────────────────────────────────────────────────
-VENV_DIR="$INSTALL_DIR/.venv"
-echo "[3/6] Creating virtual environment at $VENV_DIR ..."
-if [ -d "$VENV_DIR" ]; then
-  echo "      Existing .venv found — skipping creation."
-else
-  python3 -m venv "$VENV_DIR"
-fi
-
-VENV_PYTHON="$VENV_DIR/bin/python"
-VENV_PIP="$VENV_DIR/bin/pip"
-
-# ── Step 4: Install dependencies ─────────────────────────────────────────
-echo "[4/6] Installing dependencies ..."
-"$VENV_PIP" install --upgrade pip --quiet
-"$VENV_PIP" install -r "$INSTALL_DIR/requirements.txt" --quiet
-echo "      Done."
-
-# ── Step 5: Register with hosts ───────────────────────────────────────────
-ENTRY_PY="$INSTALL_DIR/src/main.py"
-
-if [ "$REGISTER" = true ]; then
-  echo "[5/6] Registering with Claude Code and Codex ..."
-
-  # -- Claude Code (~/.claude.json) --
-  python3 - << PYEOF
-import json, pathlib
-
-cfg_path = pathlib.Path.home() / ".claude.json"
-data = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
-data.setdefault("mcpServers", {})["skill-mcp-protocol"] = {
-    "type":    "stdio",
-    "command": "$VENV_PYTHON",
-    "args":    ["$ENTRY_PY"],
-    "env":     {},
-}
-cfg_path.write_text(json.dumps(data, indent=2))
-print("      Claude Code -> ~/.claude.json  ✓")
-PYEOF
-
-  # -- Codex (~/.codex/config.toml) --
-  CODEX_CFG="$HOME/.codex/config.toml"
-  mkdir -p "$HOME/.codex"
-  if grep -q "\[mcp_servers\.skill-mcp-protocol\]" "$CODEX_CFG" 2>/dev/null; then
-    echo "      Codex: already registered — skipping."
-  else
-    cat >> "$CODEX_CFG" << TOML
-
-[mcp_servers.skill-mcp-protocol]
-command = "$VENV_PYTHON"
-args    = ["$ENTRY_PY"]
-TOML
-    echo "      Codex  -> ~/.codex/config.toml  ✓"
-  fi
-else
-  echo "[5/6] Skipping host registration (--no-register)."
-fi
-
-# ── Step 6: Verify ────────────────────────────────────────────────────────
-echo "[6/6] Verifying installation ..."
-"$VENV_PYTHON" -c "
-import sys
-sys.path.insert(0, '$INSTALL_DIR/src')
-from manager.registry import get_registry
-print('      skill-mcp-protocol OK ✓')
-"
-
-echo ""
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  skill-mcp-protocol is ready!                                   ║"
-echo "║                                                                  ║"
-echo "║  Restart Claude Code / Codex to pick up the new MCP server.     ║"
-echo "║  Then try: skill_list  or  smcp list                            ║"
-echo "╚══════════════════════════════════════════════════════════════════╝"

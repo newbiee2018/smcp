@@ -549,7 +549,7 @@ class TestExistingHostMigration:
                     "type": "stdio",
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-github"],
-                    "env": {"GITHUB_TOKEN": "ghp_fake123"},
+                    "env": {"GITHUB_TOKEN": "test-token-placeholder"},
                 },
                 "sqlite": {
                     "type": "stdio",
@@ -572,7 +572,7 @@ class TestExistingHostMigration:
                 "github": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-github"],
-                    "env": {"GITHUB_TOKEN": "ghp_fake123"},
+                    "env": {"GITHUB_TOKEN": "test-token-placeholder"},
                 },
             },
         }
