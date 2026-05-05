@@ -99,6 +99,137 @@ def _make_test_skill(base: Path, name: str, runtime_type: str = "python",
     return skill_dir
 
 
+def _make_mcp_skill(base: Path, name: str) -> Path:
+    """Create a test skill with a REAL MCP server that responds to JSON-RPC."""
+    skill_dir = base / name
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "src").mkdir(exist_ok=True)
+
+    data = {
+        "skill": {
+            "name": name,
+            "version": "1.0.0",
+            "description": f"Real MCP test skill: {name}",
+            "author": "integration-test",
+            "tags": ["test", "mcp"],
+        },
+        "runtime": {"type": "python", "install_cmd": "pip install -r requirements.txt"},
+        "mcp": {"entrypoint": "src/main.py", "transport": "stdio"},
+        "hosts": {"claude_code": True, "codex": True},
+    }
+
+    with open(skill_dir / "skill.toml", "wb") as f:
+        tomli_w.dump(data, f)
+
+    (skill_dir / "requirements.txt").write_text("# no deps needed for test MCP server\n")
+
+    (skill_dir / "src" / "main.py").write_text('''\
+"""Minimal MCP server for integration testing."""
+import asyncio
+import json
+import sys
+
+async def main():
+    while True:
+        line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
+        if not line:
+            break
+        try:
+            msg = json.loads(line.strip())
+        except json.JSONDecodeError:
+            continue
+
+        if msg.get("method") == "initialize":
+            resp = {
+                "jsonrpc": "2.0", "id": msg["id"],
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "%s", "version": "1.0.0"},
+                },
+            }
+            sys.stdout.write(json.dumps(resp) + "\\n")
+            sys.stdout.flush()
+        elif msg.get("method") == "tools/list":
+            resp = {
+                "jsonrpc": "2.0", "id": msg["id"],
+                "result": {"tools": [
+                    {"name": "echo", "description": "Echo input",
+                     "inputSchema": {"type": "object", "properties": {
+                         "text": {"type": "string"}}}},
+                ]},
+            }
+            sys.stdout.write(json.dumps(resp) + "\\n")
+            sys.stdout.flush()
+        elif msg.get("method") == "tools/call":
+            text = msg.get("params", {}).get("arguments", {}).get("text", "")
+            resp = {
+                "jsonrpc": "2.0", "id": msg["id"],
+                "result": {"content": [{"type": "text", "text": text}]},
+            }
+            sys.stdout.write(json.dumps(resp) + "\\n")
+            sys.stdout.flush()
+        elif msg.get("method") == "notifications/initialized":
+            pass
+        else:
+            resp = {
+                "jsonrpc": "2.0", "id": msg.get("id"),
+                "error": {"code": -32601, "message": "Method not found"},
+            }
+            sys.stdout.write(json.dumps(resp) + "\\n")
+            sys.stdout.flush()
+
+asyncio.run(main())
+''' % name)
+
+    return skill_dir
+
+
+def _mcp_handshake(command: str, args: list, env: dict = None,
+                   timeout: int = 30) -> dict:
+    """Start an MCP server with command+args from host config and do a handshake.
+
+    Returns the initialize response result, or raises AssertionError.
+    """
+    init_msg = json.dumps({
+        "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "e2e-test", "version": "1.0"},
+        },
+    })
+    initialized_notif = json.dumps({
+        "jsonrpc": "2.0", "method": "notifications/initialized",
+    })
+
+    cmd_env = os.environ.copy()
+    if env:
+        cmd_env.update(env)
+
+    proc = subprocess.run(
+        [command] + args,
+        input=init_msg + "\n" + initialized_notif + "\n",
+        capture_output=True, text=True, timeout=timeout, env=cmd_env,
+    )
+
+    for line in proc.stdout.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            resp = json.loads(line)
+            if resp.get("id") == 1 and "result" in resp:
+                return resp["result"]
+        except json.JSONDecodeError:
+            continue
+
+    raise AssertionError(
+        f"MCP handshake failed.\ncmd: {command} {args}\n"
+        f"stdout: {proc.stdout[:500]}\nstderr: {proc.stderr[:500]}"
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # A) CLI workflow — simulating what Codex/Claude Code would do via shell
 # ═══════════════════════════════════════════════════════════════════════════
@@ -336,6 +467,14 @@ class TestCLIWorkflow:
 # B) MCP server workflow — tool calls via stdio protocol
 # ═══════════════════════════════════════════════════════════════════════════
 
+try:
+    import mcp
+    _HAS_MCP = True
+except ImportError:
+    _HAS_MCP = False
+
+
+@pytest.mark.skipif(not _HAS_MCP, reason="mcp package not installed (needs Python 3.10+)")
 class TestMCPServerWorkflow:
     """Test MCP server tool calls — the opt-in alternative to CLI."""
 
@@ -555,3 +694,263 @@ class TestSelfUninstall:
 
         claude_data = json.loads(self.env["claude_json"].read_text())
         assert "survivor" in claude_data.get("mcpServers", {})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# D) End-to-end interconnection — verify registered MCP servers actually work
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestMCPInterconnection:
+    """Verify that skills installed via smcp produce working MCP servers.
+
+    These tests install a real MCP skill, read the command+args from the
+    host config (claude.json), and actually start the server to verify it
+    responds to MCP protocol messages. This is what Claude Code does when
+    it connects to registered MCP servers.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup_env(self, isolated_smcp_env, tmp_path):
+        self.env = isolated_smcp_env
+        self.tmp = tmp_path
+        self.cli_env = {
+            "XDG_DATA_HOME": str(self.env["data_home"]),
+            "CLAUDE_CONFIG_PATH": str(self.env["claude_json"]),
+            "CODEX_CONFIG_PATH": str(self.env["codex_toml"]),
+            "CODEX_HOME": str(self.tmp / "codex_home"),
+            "HOME": str(self.tmp / "fakehome"),
+            "PYTHONPATH": str(PROJECT_ROOT / "src"),
+        }
+        (self.tmp / "codex_home").mkdir(exist_ok=True)
+        (self.tmp / "fakehome").mkdir(exist_ok=True)
+
+    def test_installed_mcp_skill_responds_to_handshake(self):
+        """Install a real MCP skill, start it via registered command+args, verify handshake."""
+        skill_dir = _make_mcp_skill(self.tmp, "e2e-mcp-test")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        claude_data = json.loads(self.env["claude_json"].read_text())
+        assert "e2e-mcp-test" in claude_data["mcpServers"], \
+            "Skill must be registered in claude.json"
+
+        entry = claude_data["mcpServers"]["e2e-mcp-test"]
+        command = entry["command"]
+        args = entry.get("args", [])
+        env = entry.get("env", {})
+
+        result = _mcp_handshake(command, args, env=env)
+        assert result["serverInfo"]["name"] == "e2e-mcp-test"
+        assert result["protocolVersion"] == "2024-11-05"
+
+    def test_installed_mcp_skill_lists_tools(self):
+        """Verify the installed MCP server exposes tools via tools/list."""
+        skill_dir = _make_mcp_skill(self.tmp, "e2e-tools-test")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        claude_data = json.loads(self.env["claude_json"].read_text())
+        entry = claude_data["mcpServers"]["e2e-tools-test"]
+        command = entry["command"]
+        args = entry.get("args", [])
+        env = entry.get("env", {})
+
+        init_msg = json.dumps({
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "test", "version": "1.0"},
+            },
+        })
+        notif = json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        list_msg = json.dumps({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {},
+        })
+
+        cmd_env = os.environ.copy()
+        cmd_env.update(env)
+        proc = subprocess.run(
+            [command] + args,
+            input=init_msg + "\n" + notif + "\n" + list_msg + "\n",
+            capture_output=True, text=True, timeout=30, env=cmd_env,
+        )
+
+        responses = []
+        for line in proc.stdout.strip().split("\n"):
+            try:
+                responses.append(json.loads(line.strip()))
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        tools_resp = [r for r in responses if r.get("id") == 2]
+        assert tools_resp, f"No tools/list response. stderr: {proc.stderr[:300]}"
+        tools = tools_resp[0]["result"]["tools"]
+        assert len(tools) >= 1, "Server must expose at least one tool"
+        assert tools[0]["name"] == "echo"
+
+    def test_installed_mcp_skill_handles_tool_call(self):
+        """Verify an installed MCP server handles actual tool calls."""
+        skill_dir = _make_mcp_skill(self.tmp, "e2e-call-test")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        claude_data = json.loads(self.env["claude_json"].read_text())
+        entry = claude_data["mcpServers"]["e2e-call-test"]
+        command = entry["command"]
+        args = entry.get("args", [])
+        env = entry.get("env", {})
+
+        messages = [
+            json.dumps({
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "test", "version": "1.0"},
+                },
+            }),
+            json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+            json.dumps({
+                "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {
+                    "name": "echo",
+                    "arguments": {"text": "hello from e2e test"},
+                },
+            }),
+        ]
+
+        cmd_env = os.environ.copy()
+        cmd_env.update(env)
+        proc = subprocess.run(
+            [command] + args,
+            input="\n".join(messages) + "\n",
+            capture_output=True, text=True, timeout=30, env=cmd_env,
+        )
+
+        responses = []
+        for line in proc.stdout.strip().split("\n"):
+            try:
+                responses.append(json.loads(line.strip()))
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        call_resp = [r for r in responses if r.get("id") == 3]
+        assert call_resp, f"No tool call response. stderr: {proc.stderr[:300]}"
+        content = call_resp[0]["result"]["content"]
+        assert content[0]["text"] == "hello from e2e test"
+
+    def test_smcp_mcp_server_interconnection(self):
+        """Verify smcp's own MCP server mode works via registered command+args.
+
+        Install skill-mcp-protocol, register it as MCP server, then verify
+        the registered entry produces a working MCP server that can install
+        another skill.
+        """
+        _smcp("install", str(PROJECT_ROOT), env=self.cli_env)
+
+        # Register smcp itself as MCP server
+        _smcp("register", "skill-mcp-protocol",
+              "--hosts", "claude_code", env=self.cli_env)
+
+        claude_data = json.loads(self.env["claude_json"].read_text())
+        assert "skill-mcp-protocol" in claude_data["mcpServers"]
+
+        entry = claude_data["mcpServers"]["skill-mcp-protocol"]
+        command = entry["command"]
+        args = entry.get("args", [])
+
+        result = _mcp_handshake(command, args, env=self.cli_env)
+        assert "rmcp" in result.get("serverInfo", {}).get("name", "") or \
+               "skill" in str(result).lower(), \
+            f"Unexpected server info: {result}"
+
+    def test_reinstalled_skill_mcp_still_works(self):
+        """After remove+reinstall, the MCP server entry must still work."""
+        skill_dir = _make_mcp_skill(self.tmp, "reinstall-mcp")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+        _smcp("remove", "reinstall-mcp", env=self.cli_env)
+
+        # Reinstall
+        skill_dir2 = _make_mcp_skill(self.tmp / "v2", "reinstall-mcp")
+        _smcp("install", str(skill_dir2), env=self.cli_env)
+
+        claude_data = json.loads(self.env["claude_json"].read_text())
+        entry = claude_data["mcpServers"]["reinstall-mcp"]
+        result = _mcp_handshake(entry["command"], entry.get("args", []),
+                                env=entry.get("env", {}))
+        assert result["serverInfo"]["name"] == "reinstall-mcp"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# E) Official interface verification — claude mcp list
+# ═══════════════════════════════════════════════════════════════════════════
+
+_HAS_CLAUDE_CLI = shutil.which("claude") is not None
+
+
+@pytest.mark.skipif(not _HAS_CLAUDE_CLI, reason="claude CLI not installed")
+class TestOfficialInterface:
+    """Verify installed skills appear in the official `claude mcp list` output.
+
+    Claude Code reads MCP servers from $HOME/.claude.json, so we set
+    CLAUDE_CONFIG_PATH to fakehome/.claude.json to align both paths.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup_env(self, isolated_smcp_env, tmp_path):
+        self.env = isolated_smcp_env
+        self.tmp = tmp_path
+        fakehome = self.tmp / "fakehome"
+        fakehome.mkdir(exist_ok=True)
+        claude_json = fakehome / ".claude.json"
+        claude_json.write_text("{}")
+
+        self.cli_env = {
+            "XDG_DATA_HOME": str(self.env["data_home"]),
+            "CLAUDE_CONFIG_PATH": str(claude_json),
+            "CODEX_CONFIG_PATH": str(self.env["codex_toml"]),
+            "CODEX_HOME": str(self.tmp / "codex_home"),
+            "HOME": str(fakehome),
+            "PYTHONPATH": str(PROJECT_ROOT / "src"),
+        }
+        self.fakehome = fakehome
+        self.claude_json = claude_json
+        (self.tmp / "codex_home").mkdir(exist_ok=True)
+
+    def test_claude_mcp_list_shows_installed_skill(self):
+        """After smcp install, `claude mcp list` must show the skill."""
+        skill_dir = _make_mcp_skill(self.tmp, "official-test")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        result = subprocess.run(
+            ["claude", "mcp", "list"],
+            capture_output=True, text=True, timeout=30,
+            env={**os.environ, "HOME": str(self.fakehome)},
+        )
+        assert "official-test" in result.stdout, \
+            f"Skill should appear in claude mcp list output.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+    def test_claude_mcp_list_after_remove(self):
+        """After smcp remove, `claude mcp list` must NOT show the skill."""
+        skill_dir = _make_mcp_skill(self.tmp, "remove-check")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+        _smcp("remove", "remove-check", env=self.cli_env)
+
+        result = subprocess.run(
+            ["claude", "mcp", "list"],
+            capture_output=True, text=True, timeout=30,
+            env={**os.environ, "HOME": str(self.fakehome)},
+        )
+        assert "remove-check" not in result.stdout, \
+            f"Removed skill should not appear in claude mcp list.\nstdout: {result.stdout}"
+
+    def test_skill_discoverable_via_skills_dir(self):
+        """SKILL.md must exist in $HOME/.claude/skills/ for /skills discovery."""
+        skill_dir = _make_test_skill(self.tmp, "disc-official", "python")
+        _smcp("install", str(skill_dir), env=self.cli_env)
+
+        skill_md = self.fakehome / ".claude" / "skills" / "disc-official" / "SKILL.md"
+        assert skill_md.exists(), "SKILL.md must be in ~/.claude/skills/<name>/"
+
+        content = skill_md.read_text()
+        assert content.startswith("---"), "Must have YAML frontmatter"
+        assert "name:" in content
+        assert "description:" in content

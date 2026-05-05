@@ -13,7 +13,7 @@ tags   = ["meta", "management", "protocol", "bootstrap"]
 
 [runtime]
 type           = "python"
-python_version = "3.10"
+python_version = "3.8"
 install_cmd    = "pip install -r requirements.txt"
 
 [mcp]

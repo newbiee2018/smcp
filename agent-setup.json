@@ -22,10 +22,10 @@
     {
       "id":            "check_python",
       "type":          "check_runtime",
-      "description":   "Verify Python 3.10+ is available on this host.",
+      "description":   "Verify Python 3.8+ is available on this host (3.10+ needed for MCP server mode).",
       "check_command": "python3 --version",
-      "min_version":   "3.10",
-      "on_fail":       "Install Python 3.10+ via your system package manager (apt install python3, brew install python, winget install Python.Python.3) before proceeding."
+      "min_version":   "3.8",
+      "on_fail":       "Install Python 3.8+ via your system package manager (apt install python3, brew install python, winget install Python.Python.3) before proceeding."
     },
     {
       "id":          "install",

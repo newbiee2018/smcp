@@ -23,16 +23,16 @@ echo "  Repo dir : $REPO_DIR"
 echo ""
 
 # ── Step 1: Check Python ──────────────────────────────────────────────────
-echo "[1/3] Checking Python 3.10+ ..."
+echo "[1/3] Checking Python 3.8+ ..."
 if ! command -v python3 &>/dev/null; then
   echo "ERROR: python3 not found on PATH." >&2
-  echo "       Install Python 3.10+ and re-run." >&2
+  echo "       Install Python 3.8+ and re-run." >&2
   exit 1
 fi
 PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-PY_MIN=$(python3 -c "import sys; print(1 if sys.version_info >= (3, 10) else 0)")
+PY_MIN=$(python3 -c "import sys; print(1 if sys.version_info >= (3, 8) else 0)")
 if [ "$PY_MIN" = "0" ]; then
-  echo "ERROR: Python 3.10+ required, found $PY_VER." >&2
+  echo "ERROR: Python 3.8+ required, found $PY_VER." >&2
   exit 1
 fi
 echo "      Found Python $PY_VER"

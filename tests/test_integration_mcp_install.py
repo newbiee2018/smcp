@@ -624,7 +624,7 @@ class TestExistingHostMigration:
         assert len(servers) == 4
 
         # Verify env vars are preserved (sensitive data like tokens)
-        assert servers["github"]["env"]["GITHUB_TOKEN"] == "ghp_fake123"
+        assert servers["github"]["env"]["GITHUB_TOKEN"] == "test-token-placeholder"
 
     def test_uninstall_skill_preserves_existing_entries(self):
         """Removing a skill should NOT touch pre-existing entries."""

@@ -20,7 +20,7 @@ Or use the bootstrap script:
 ./bootstrap.sh
 ```
 
-> **Requires**: Python 3.10+, `~/.local/bin` in `PATH`
+> **Requires**: Python 3.8+ (3.10+ for MCP server mode), `~/.local/bin` in `PATH`
 
 ## Usage
 
