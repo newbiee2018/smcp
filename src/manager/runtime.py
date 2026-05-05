@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 Runtime environment management (Python venvs, Node, binary).
 Creates, rebuilds, and removes isolated environments per skill.

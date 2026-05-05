@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 Importer — unpacks a .skill.tar.gz archive into the global skills directory,
 creates the runtime environment, and registers with host configs.

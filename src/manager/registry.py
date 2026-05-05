@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 Local skill registry.
 Follows XDG Base Directory Specification:

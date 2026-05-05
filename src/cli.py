@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 smcp — command-line interface for skill-mcp-protocol.
 

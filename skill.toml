@@ -8,8 +8,9 @@ runtime (venv) management and host auto-registration for Claude Code and Codex.
 AI agents discover this tool via native skill entries (SKILL.md)
 and use the `smcp` CLI for all operations.
 """
-author = "newbiee2018"
-tags   = ["meta", "management", "protocol", "bootstrap"]
+author  = "newbiee2018"
+license = "MIT"
+tags    = ["meta", "management", "protocol", "bootstrap"]
 
 [runtime]
 type           = "python"

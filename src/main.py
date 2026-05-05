@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 skill-mcp-protocol — MCP server entry point.
 

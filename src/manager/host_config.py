@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 Host configuration manager.
 Registers / unregisters MCP servers in Claude Code (~/.claude.json)

@@ -2,14 +2,40 @@
 .venv/
 venv/
 env/
+node_modules/
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-node_modules/
-.pytest_cache/
 *.egg-info/
 dist/
+build/
+*.egg
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
 .env
+.env.*
 
 # Export artifacts (large, regenerate with: smcp export)
 exports/*.tar.gz
+
+# Rust build artifacts (binary skills)
+target/

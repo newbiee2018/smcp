@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 GitHub installer — clone a repo, detect project type, generate skill.toml,
 build runtime, and register with hosts.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 Exporter — packages a skill into a portable .skill.tar.gz archive.
 
