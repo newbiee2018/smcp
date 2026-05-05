@@ -1,6 +1,6 @@
 ---
 name: smcp
-description: Unified manager for AI skills and MCP servers. Install, export, import, and register skills across Claude Code and Codex.
+description: Unified manager for AI skills and MCP servers. Install, export, import, and register skills and MCP servers across Claude Code and Codex.
 metadata:
   short-description: Manage AI skills and MCP servers via the smcp CLI
 ---
@@ -13,11 +13,11 @@ Unified manager for AI skills and MCP servers across Claude Code and Codex — i
 
 Use this skill when the user asks to:
 - Install an MCP server or skill (from GitHub URL, local path, or archive)
-- List, remove, update, or export installed skills
+- List, remove, update, or export installed skills or MCP servers
 - Check what MCP servers are registered
-- Transfer skills between hosts
+- Transfer skills or MCP servers between hosts
 
-## How to Install a Skill
+## How to Install a Skill or MCP Server
 
 Use the `smcp` CLI. All commands output structured JSON.
 
@@ -46,14 +46,14 @@ smcp import /path/to/skill.tar.gz
 
 | Command | Description |
 |---------|-------------|
-| `smcp list` | List all installed skills |
-| `smcp info <name>` | Get details about a skill |
+| `smcp list` | List all installed skills and MCP servers |
+| `smcp info <name>` | Get details about a skill or MCP server |
 | `smcp install <path>` | Install from local dir or archive |
-| `smcp remove <name>` | Uninstall a skill |
+| `smcp remove <name>` | Uninstall a skill or MCP server |
 | `smcp update <name>` | Rebuild env in-place or from new source |
 | `smcp export <name>` | Export to portable .skill.tar.gz |
 | `smcp import <archive>` | Import a .skill.tar.gz archive |
-| `smcp create <name> --description "..."` | Scaffold a new skill |
+| `smcp create <name> --description "..."` | Scaffold a new skill or MCP server |
 | `smcp register <name>` | Re-register with Claude Code / Codex |
 | `smcp unregister <name>` | Remove from host configs (keep files) |
 | `smcp rebuild-env <name>` | Recreate runtime environment |
@@ -74,7 +74,7 @@ smcp unregister skill-mcp-protocol --hosts claude_code --hosts codex
 
 ## skill.toml Format
 
-Every managed skill needs a `skill.toml`:
+Every managed skill or MCP server needs a `skill.toml`:
 
 ```toml
 [skill]
@@ -127,7 +127,7 @@ rm ~/.local/bin/smcp
 
 ## Key Paths
 
-- Skills: `~/.local/share/skill-mcp/skills/<name>/`
+- Skills and MCP servers: `~/.local/share/skill-mcp/skills/<name>/`
 - Exports: `~/.local/share/skill-mcp/exports/`
 - Registry: `~/.local/share/skill-mcp/registry.toml`
-- Each skill's runtime: `~/.local/share/skill-mcp/skills/<name>/.venv/`
+- Each entry's runtime: `~/.local/share/skill-mcp/skills/<name>/.venv/`

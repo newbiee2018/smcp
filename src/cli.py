@@ -51,15 +51,18 @@ def cli():
 
 @cli.command("list")
 def cmd_list():
-    """List all installed skills."""
+    """List all installed skills and MCP servers."""
     reg = get_registry()
     skills = reg.list_all()
     if not skills:
-        click.echo("No skills installed.")
+        click.echo("No skills or MCP servers installed.")
         return
     for s in skills:
         env = click.style("✓", fg="green") if s["env_ready"] else click.style("✗", fg="red")
-        click.echo(f"  {env}  {s['name']:30s}  v{s['version']:10s}  {s['runtime_type']}")
+        hosts = s.get("hosts", {})
+        is_mcp = s["runtime_type"] != "none" and (hosts.get("claude_code") or hosts.get("codex"))
+        kind = "mcp" if is_mcp else "skill"
+        click.echo(f"  {env}  {s['name']:30s}  v{s['version']:10s}  {kind:5s}  {s['runtime_type']}")
 
 
 # ── info ─────────────────────────────────────────────────────────────────────
@@ -67,7 +70,7 @@ def cmd_list():
 @cli.command("info")
 @click.argument("name")
 def cmd_info(name: str):
-    """Show details about an installed skill."""
+    """Show details about an installed skill or MCP server."""
     reg = get_registry()
     manifest = reg.get(name)
     if not manifest:
@@ -85,7 +88,7 @@ def cmd_info(name: str):
 @click.option("--no-rebuild-env", is_flag=True, default=False)
 @click.option("--no-register",    is_flag=True, default=False)
 def cmd_install(source: str, no_rebuild_env: bool, no_register: bool):
-    """Install a skill from a local directory or .skill.tar.gz."""
+    """Install a skill or MCP server from a local directory or .skill.tar.gz."""
     src = Path(source).expanduser().resolve()
     if str(src).endswith(".tar.gz"):
         result = importer.import_skill(
@@ -113,7 +116,7 @@ def cmd_install(source: str, no_rebuild_env: bool, no_register: bool):
 @click.option("--keep-files", is_flag=True, default=False,
               help="Keep source files; only remove env and unregister.")
 def cmd_remove(name: str, keep_files: bool):
-    """Remove an installed skill."""
+    """Remove an installed skill or MCP server."""
     import shutil
     reg = get_registry()
     manifest = reg.get(name)
@@ -135,7 +138,7 @@ def cmd_remove(name: str, keep_files: bool):
 @click.argument("name")
 @click.option("--source", default=None, help="New source path or archive.")
 def cmd_update(name: str, source: Optional[str] = None):
-    """Update (or rebuild) an installed skill."""
+    """Update (or rebuild) an installed skill or MCP server."""
     reg = get_registry()
     if source:
         src = Path(source).expanduser().resolve()
@@ -160,7 +163,7 @@ def cmd_update(name: str, source: Optional[str] = None):
 @click.argument("name")
 @click.option("--output-dir", default=None, help=f"Default: {SKILL_MCP_EXPORTS}")
 def cmd_export(name: str, output_dir: Optional[str]):
-    """Export a skill to a portable .skill.tar.gz archive."""
+    """Export a skill or MCP server to a portable .skill.tar.gz archive."""
     reg = get_registry()
     manifest = reg.get(name)
     if not manifest:
@@ -179,7 +182,7 @@ def cmd_export(name: str, output_dir: Optional[str]):
 @click.option("--no-register",    is_flag=True, default=False)
 def cmd_import(package_path: str, install_dir: Optional[str],
                no_rebuild_env: bool, no_register: bool):
-    """Import a skill from a .skill.tar.gz archive."""
+    """Import a skill or MCP server from a .skill.tar.gz archive."""
     result = importer.import_skill(
         Path(package_path).expanduser().resolve(),
         install_dir=Path(install_dir) if install_dir else None,
@@ -202,7 +205,7 @@ def cmd_import(package_path: str, install_dir: Optional[str],
               type=click.Choice(["python", "node", "binary", "none"]))
 @click.option("--author", default="")
 def cmd_create(name: str, description: str, runtime: str, author: str):
-    """Scaffold a new skill directory."""
+    """Scaffold a new skill or MCP server directory."""
     from jinja2 import Environment, FileSystemLoader
     import json as _json
 
@@ -240,7 +243,7 @@ def cmd_create(name: str, description: str, runtime: str, author: str):
 @click.option("--hosts", multiple=True,
               type=click.Choice(["claude_code", "codex"]))
 def cmd_register(name: str, hosts):
-    """Register a skill with host configs."""
+    """Register a skill or MCP server with host configs."""
     reg = get_registry()
     manifest = reg.get(name)
     if not manifest:
@@ -255,7 +258,7 @@ def cmd_register(name: str, hosts):
 @click.option("--hosts", multiple=True,
               type=click.Choice(["claude_code", "codex"]))
 def cmd_unregister(name: str, hosts):
-    """Remove a skill from host configs (keeps files)."""
+    """Remove a skill or MCP server from host configs (keeps files)."""
     result = host_config.unregister(name, list(hosts) or None)
     click.echo(click.style(f"✓ Unregistered '{name}'", fg="green"))
     _ok(result)
@@ -266,7 +269,7 @@ def cmd_unregister(name: str, hosts):
 @cli.command("rebuild-env")
 @click.argument("name")
 def cmd_rebuild_env(name: str):
-    """Destroy and recreate the runtime environment for a skill."""
+    """Destroy and recreate the runtime environment for a skill or MCP server."""
     reg = get_registry()
     manifest = reg.get(name)
     if not manifest:

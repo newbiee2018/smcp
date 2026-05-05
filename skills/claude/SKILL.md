@@ -1,77 +1,131 @@
 ---
 name: smcp
-description: Unified manager for AI skills and MCP servers via the smcp CLI
+description: Unified manager for AI skills and MCP servers. Install, export, import, and register skills and MCP servers across Claude Code and Codex.
 ---
 
 # smcp
 
-This host has the `smcp` CLI installed for managing AI skills and MCP servers — install, export, import, and register them across Claude Code and Codex.
+Unified manager for AI skills and MCP servers across Claude Code and Codex — install, update, remove, export, import, and register them with a single CLI.
 
-## Installing a new skill
+## When to Use
 
-Use shell commands to install skills:
+Use this skill when the user asks to:
+- Install an MCP server or skill (from GitHub URL, local path, or archive)
+- List, remove, update, or export installed skills or MCP servers
+- Check what MCP servers are registered
+- Transfer skills or MCP servers between hosts
 
-1. **From a GitHub repo**:
-   ```bash
-   git clone --depth 1 <github-url> /tmp/skill-clone
-   smcp install /tmp/skill-clone
-   ```
+## How to Install a Skill or MCP Server
 
-2. **From a local directory**:
-   ```bash
-   smcp install /path/to/skill-dir
-   ```
+Use the `smcp` CLI. All commands output structured JSON.
 
-3. **From an archive**:
-   ```bash
-   smcp import /path/to/skill.tar.gz
-   ```
+### From a GitHub URL
 
-If the repo has no `skill.toml`, create one first. See `smcp create` for scaffolding.
-
-## CLI commands
-
-```
-smcp list                          # list installed skills
-smcp info <name>                   # details about a skill
-smcp install <path>                # install from local dir or archive
-smcp remove <name>                 # uninstall
-smcp update <name>                 # rebuild env or update from new source
-smcp export <name>                 # export to portable archive
-smcp import <archive>              # import a .skill.tar.gz
-smcp create <name> --description   # scaffold new skill
-smcp register <name>               # re-register with host configs
-smcp unregister <name>             # remove from host configs
-smcp rebuild-env <name>            # recreate runtime environment
+```bash
+git clone --depth 1 <url> /tmp/skill-clone
+smcp install /tmp/skill-clone
 ```
 
-## MCP server mode (optional)
+If the repo has no `skill.toml`, create one first (see format below).
 
-By default, smcp is CLI-only. To enable MCP server mode:
+### From a local directory
+
+```bash
+smcp install /path/to/skill-dir
+```
+
+### From a .skill.tar.gz archive
+
+```bash
+smcp import /path/to/skill.tar.gz
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `smcp list` | List all installed skills and MCP servers |
+| `smcp info <name>` | Get details about a skill or MCP server |
+| `smcp install <path>` | Install from local dir or archive |
+| `smcp remove <name>` | Uninstall a skill or MCP server |
+| `smcp update <name>` | Rebuild env in-place or from new source |
+| `smcp export <name>` | Export to portable .skill.tar.gz |
+| `smcp import <archive>` | Import a .skill.tar.gz archive |
+| `smcp create <name> --description "..."` | Scaffold a new skill or MCP server |
+| `smcp register <name>` | Re-register with Claude Code / Codex |
+| `smcp unregister <name>` | Remove from host configs (keep files) |
+| `smcp rebuild-env <name>` | Recreate runtime environment |
+
+## Alternative: MCP Server Mode
+
+By default, smcp is CLI-only. To also enable MCP server mode (structured tool calls instead of shell commands):
 
 ```bash
 smcp register skill-mcp-protocol --hosts claude_code --hosts codex
 ```
 
-This exposes MCP tools (`skill_install`, `skill_list`, `skill_remove`, etc.) as an alternative to CLI commands.
+This adds smcp as an MCP server in host configs, exposing tools like `skill_install`, `skill_list`, `skill_remove`, etc. To revert to CLI-only:
 
-## Manual installation
+```bash
+smcp unregister skill-mcp-protocol --hosts claude_code --hosts codex
+```
+
+## skill.toml Format
+
+Every managed skill or MCP server needs a `skill.toml`:
+
+```toml
+[skill]
+name = "my-skill"
+version = "1.0.0"
+description = "What this skill does"
+author = "name"
+tags = ["mcp"]
+
+[runtime]
+type = "python"  # or "node", "binary", "none"
+install_cmd = "pip install -r requirements.txt"
+
+[mcp]
+entrypoint = "src/main.py"
+transport = "stdio"
+
+[hosts]
+claude_code = true   # register as MCP server in Claude Code
+codex = true         # register as MCP server in Codex
+```
+
+## Manual Installation
 
 ```bash
 git clone <repo-url> /tmp/skill-mcp-protocol
 cd /tmp/skill-mcp-protocol
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python src/cli.py install .
+
+# Install CLI wrapper
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/smcp << 'EOF'
+#!/usr/bin/env bash
+exec "/tmp/skill-mcp-protocol/.venv/bin/python" "/tmp/skill-mcp-protocol/src/cli.py" "$@"
+EOF
+chmod +x ~/.local/bin/smcp
+
+# Or let smcp install itself properly:
+.venv/bin/python src/cli.py install /tmp/skill-mcp-protocol
 ```
 
 ## Uninstallation
 
 ```bash
 smcp remove skill-mcp-protocol
+# Also remove CLI wrapper:
 rm ~/.local/bin/smcp
 ```
 
-## Export / import
+## Key Paths
 
-Exports bundle source and dependency specs into a portable `.skill.tar.gz`. Runtime artifacts (`.venv/`, `node_modules/`) are excluded and rebuilt automatically on the target host.
+- Skills and MCP servers: `~/.local/share/skill-mcp/skills/<name>/`
+- Exports: `~/.local/share/skill-mcp/exports/`
+- Registry: `~/.local/share/skill-mcp/registry.toml`
+- Each entry's runtime: `~/.local/share/skill-mcp/skills/<name>/.venv/`
