@@ -581,7 +581,7 @@ class TestMCPServerWorkflow:
     def test_mcp_protocol_info(self):
         """MCP protocol_info returns protocol description."""
         result = self._mcp_call("protocol_info", {})
-        assert "skill-mcp-protocol" in result["name"]
+        assert "smcp" in result["name"]
         assert "available_tools" in result
 
 
@@ -858,8 +858,7 @@ class TestMCPInterconnection:
         args = entry.get("args", [])
 
         result = _mcp_handshake(command, args, env=self.cli_env)
-        assert "rmcp" in result.get("serverInfo", {}).get("name", "") or \
-               "skill" in str(result).lower(), \
+        assert "smcp" in result.get("serverInfo", {}).get("name", ""), \
             f"Unexpected server info: {result}"
 
     def test_reinstalled_skill_mcp_still_works(self):

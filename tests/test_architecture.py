@@ -401,7 +401,7 @@ class TestSkillDiscoveryFormat(_IsolatedEnvMixin, unittest.TestCase):
         self.assertIsNotNone(fm, "shipped SKILL.md must have frontmatter")
         self.assertIn("name", fm)
         self.assertIn("description", fm)
-        self.assertEqual(fm["name"], "skill-mcp-protocol")
+        self.assertEqual(fm["name"], "smcp")
 
     def test_no_claude_md_created_anywhere(self):
         """Ensure no CLAUDE.md is created in skill dirs (wrong filename)."""

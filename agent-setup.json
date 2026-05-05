@@ -1,6 +1,6 @@
 {
-  "_comment": "Machine-readable bootstrap instructions for AI agents (Claude Code, Codex). Execute setup_steps in order to install the smcp CLI on any new host.",
-  "protocol": "skill-mcp-protocol",
+  "_comment": "Machine-readable bootstrap instructions for AI agents (Claude Code, Codex). Execute setup_steps in order to install smcp on any new host.",
+  "protocol": "smcp",
   "protocol_version": "1.0",
   "format_version": "1.0",
 
@@ -30,7 +30,7 @@
     {
       "id":          "install",
       "type":        "run_command",
-      "description": "Install skill-mcp-protocol using its own CLI. This copies files, creates a venv, installs deps, creates native skill entries (SKILL.md), and installs the smcp wrapper to ~/.local/bin/.",
+      "description": "Install smcp using its own CLI. This copies files, sets up deps, creates native skill entries (SKILL.md), and installs the smcp binary to ~/.local/bin/.",
       "command":     "python3 {repo_dir}/src/cli.py install {repo_dir}",
       "note":        "If smcp is already in PATH, you can also run: smcp install {repo_dir}"
     },
@@ -47,7 +47,7 @@
     {
       "id":          "remove",
       "type":        "run_command",
-      "description": "Remove skill-mcp-protocol and clean all native entries.",
+      "description": "Remove smcp and clean all native entries.",
       "command":     "smcp remove skill-mcp-protocol"
     },
     {
@@ -59,7 +59,7 @@
   ],
 
   "mcp_server_mode": {
-    "_comment": "MCP server mode is opt-in. By default, skill-mcp-protocol is CLI-only.",
+    "_comment": "MCP server mode is opt-in. By default, smcp is CLI-only.",
     "enable":  "smcp register skill-mcp-protocol --hosts claude_code --hosts codex",
     "disable": "smcp unregister skill-mcp-protocol --hosts claude_code --hosts codex"
   }

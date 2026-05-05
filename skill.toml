@@ -20,7 +20,7 @@ install_cmd    = "pip install -r requirements.txt"
 entrypoint = "src/main.py"
 transport  = "stdio"
 
-# skill-mcp-protocol itself is NOT an MCP server — it's a CLI tool.
+# smcp itself is NOT an MCP server — it's a CLI tool.
 # AI agents use `smcp` commands. Other skills it installs CAN be MCP servers.
 # To opt-in to MCP mode: smcp register skill-mcp-protocol --hosts claude_code codex
 [hosts]

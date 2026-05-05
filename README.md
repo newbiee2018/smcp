@@ -1,4 +1,4 @@
-# skill-mcp-protocol
+# smcp
 
 Unified manager for AI skills and MCP servers across **Claude Code** and **Codex**.
 
@@ -91,7 +91,7 @@ Set `runtime.type = "none"` for description-only skills (no venv, no MCP server)
 │   │   ├── src/             # source code
 │   │   ├── .venv/           # per-skill Python venv (auto-managed)
 │   │   └── ...
-│   └── skill-mcp-protocol/  # this tool (self-managed)
+│   └── skill-mcp-protocol/  # smcp itself (self-managed)
 ├── exports/                 # exported .skill.tar.gz archives
 └── registry.toml            # installed skills registry
 
@@ -102,7 +102,7 @@ Set `runtime.type = "none"` for description-only skills (no venv, no MCP server)
 
 ## MCP Server Mode (Optional)
 
-By default, skill-mcp-protocol is **CLI-only**. AI agents call `smcp` commands directly. To also enable MCP server mode (structured tool calls):
+By default, smcp is **CLI-only**. AI agents call `smcp` commands directly. To also enable MCP server mode (structured tool calls):
 
 ```bash
 smcp register skill-mcp-protocol --hosts claude_code --hosts codex

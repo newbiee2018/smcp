@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# bootstrap.sh — installs skill-mcp-protocol on a new host.
+# bootstrap.sh — installs smcp on a new host.
 #
 # This is the human/script-friendly version of agent-setup.json.
 # AI agents should prefer reading agent-setup.json directly.
@@ -17,7 +17,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║      skill-mcp-protocol  bootstrap               ║"
+echo "║      smcp  bootstrap                              ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo "  Repo dir : $REPO_DIR"
 echo ""
@@ -38,7 +38,7 @@ fi
 echo "      Found Python $PY_VER"
 
 # ── Step 2: Install via smcp CLI ──────────────────────────────────────────
-echo "[2/3] Installing skill-mcp-protocol ..."
+echo "[2/3] Installing smcp ..."
 python3 "$REPO_DIR/src/cli.py" install "$REPO_DIR"
 
 # ── Step 3: Verify ────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ if command -v smcp &>/dev/null; then
   smcp list
   echo ""
   echo "╔══════════════════════════════════════════════════════════════════╗"
-  echo "║  skill-mcp-protocol is ready!                                   ║"
+  echo "║  smcp is ready!                                                  ║"
   echo "║                                                                  ║"
   echo "║  The smcp CLI is installed at ~/.local/bin/smcp                  ║"
   echo "║  Make sure ~/.local/bin is in your PATH.                         ║"

@@ -1,9 +1,9 @@
 ---
-name: skill-mcp-protocol
+name: smcp
 description: Unified manager for AI skills and MCP servers via the smcp CLI
 ---
 
-# skill-mcp-protocol
+# smcp
 
 This host has the `smcp` CLI installed for managing AI skills and MCP servers — install, export, import, and register them across Claude Code and Codex.
 
@@ -47,7 +47,7 @@ smcp rebuild-env <name>            # recreate runtime environment
 
 ## MCP server mode (optional)
 
-By default, skill-mcp-protocol is CLI-only. To enable MCP server mode:
+By default, smcp is CLI-only. To enable MCP server mode:
 
 ```bash
 smcp register skill-mcp-protocol --hosts claude_code --hosts codex

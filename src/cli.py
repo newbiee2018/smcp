@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 """
-smcp — command-line interface for skill-mcp-protocol.
+smcp — unified manager for AI skills and MCP servers.
 
 Usage:
   smcp list
@@ -44,7 +44,7 @@ def _err(msg: str) -> None:
 
 @click.group()
 def cli():
-    """skill-mcp-protocol: manage AI skills and MCP servers."""
+    """smcp: unified manager for AI skills and MCP servers."""
 
 
 # ── list ─────────────────────────────────────────────────────────────────────
