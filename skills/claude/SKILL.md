@@ -1,11 +1,11 @@
 ---
 name: skill-mcp-protocol
-description: Manage MCP servers and AI skills with isolated runtimes via the smcp CLI
+description: Unified manager for AI skills and MCP servers via the smcp CLI
 ---
 
 # skill-mcp-protocol
 
-This host has the `smcp` CLI installed for managing MCP servers and AI skills with isolated runtime environments.
+This host has the `smcp` CLI installed for managing AI skills and MCP servers — install, export, import, and register them across Claude Code and Codex.
 
 ## Installing a new skill
 
@@ -72,6 +72,6 @@ smcp remove skill-mcp-protocol
 rm ~/.local/bin/smcp
 ```
 
-## Key rule
+## Export / import
 
-Each skill gets its own isolated runtime (`.venv/` for Python, `node_modules/` for Node.js). Exports never include runtime artifacts — they are rebuilt on import.
+Exports bundle source and dependency specs into a portable `.skill.tar.gz`. Runtime artifacts (`.venv/`, `node_modules/`) are excluded and rebuilt automatically on the target host.

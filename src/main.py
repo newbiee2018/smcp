@@ -466,9 +466,10 @@ async def _dispatch(name: str, args: Dict[str, Any]) -> Any:
             "purpose": (
                 "Unified manager for AI skills and MCP servers. "
                 "Each skill is a self-contained directory with skill.toml, source code, "
-                "and a dependency spec. Runtime envs (.venv) are local-only and rebuilt "
-                "on import. Export packages include agent-setup.json so any AI agent "
-                "can bootstrap the skill without human intervention."
+                "and a dependency spec. Exports bundle everything needed to reproduce "
+                "the skill on another host — runtime envs are rebuilt automatically. "
+                "Packages include agent-setup.json so any AI agent can bootstrap "
+                "the skill without human intervention."
             ),
             "global_paths": {
                 "skills":   str(SKILL_MCP_SKILLS),

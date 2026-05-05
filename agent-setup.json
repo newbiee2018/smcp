@@ -7,7 +7,7 @@
   "skill": {
     "name":        "skill-mcp-protocol",
     "version":     "0.2.0",
-    "description": "Unified CLI tool for managing AI skills and MCP servers with isolated runtimes.",
+    "description": "Unified manager for AI skills and MCP servers across Claude Code and Codex.",
     "author":      "newbiee2018",
     "runtime":     "python"
   },

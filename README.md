@@ -1,8 +1,8 @@
 # skill-mcp-protocol
 
-Unified CLI tool for managing AI skills and MCP servers with isolated runtime environments.
+Unified manager for AI skills and MCP servers across **Claude Code** and **Codex**.
 
-Install, update, remove, export, and import skills across **Claude Code** and **Codex** with per-skill venvs (`Python`) or `node_modules` (`Node.js`). AI agents discover `smcp` via native skill entries and use it for all operations.
+Install, update, remove, export, and import skills — each bundled with its source, dependencies, and host registration config in a single `skill.toml` manifest. Runtime environments (Python venv, Node node_modules) are managed per skill to keep dependencies from conflicting. AI agents discover `smcp` via native skill entries and use it for all operations.
 
 ## Quick Start
 
@@ -12,7 +12,7 @@ cd skill-mcp-protocol
 python3 src/cli.py install .
 ```
 
-This creates a venv, installs dependencies, adds `smcp` to `~/.local/bin/`, and creates native skill entries for Claude Code and Codex.
+This installs the `smcp` CLI to `~/.local/bin/`, sets up dependencies, and creates native skill entries for Claude Code and Codex.
 
 Or use the bootstrap script:
 
@@ -52,7 +52,7 @@ smcp install /path/to/skill-dir
 smcp import /path/to/skill.skill.tar.gz
 ```
 
-Each skill gets its own isolated runtime (`.venv/` for Python, `node_modules/` for Node.js). Exports never include runtime artifacts — they are rebuilt on import.
+Exports bundle source and dependency specs into a portable `.skill.tar.gz` — runtime artifacts (`.venv/`, `node_modules/`) are excluded and rebuilt automatically on the target host.
 
 ## skill.toml Format
 
@@ -89,7 +89,7 @@ Set `runtime.type = "none"` for description-only skills (no venv, no MCP server)
 │   ├── my-skill/            # installed skill
 │   │   ├── skill.toml       # manifest
 │   │   ├── src/             # source code
-│   │   ├── .venv/           # isolated Python venv
+│   │   ├── .venv/           # per-skill Python venv (auto-managed)
 │   │   └── ...
 │   └── skill-mcp-protocol/  # this tool (self-managed)
 ├── exports/                 # exported .skill.tar.gz archives

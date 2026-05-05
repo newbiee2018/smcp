@@ -1,13 +1,13 @@
 ---
 name: skill-mcp-protocol
-description: Install, manage, export, and import MCP servers and AI skills with isolated runtime environments. Use this skill when a user asks to install an MCP server, manage skills, or set up a new tool.
+description: Unified manager for AI skills and MCP servers. Install, export, import, and register skills across Claude Code and Codex.
 metadata:
-  short-description: Manage MCP servers and skills via the smcp CLI
+  short-description: Manage AI skills and MCP servers via the smcp CLI
 ---
 
 # Skill MCP Protocol
 
-Manages MCP servers and AI skills across Claude Code and Codex with isolated runtime environments (Python venv, Node node_modules) per skill.
+Unified manager for AI skills and MCP servers across Claude Code and Codex — install, update, remove, export, import, and register them with a single CLI.
 
 ## When to Use
 

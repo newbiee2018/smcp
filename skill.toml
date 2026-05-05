@@ -2,11 +2,10 @@
 name        = "skill-mcp-protocol"
 version     = "0.2.0"
 description = """
-Unified CLI tool for managing AI skills and MCP servers.
-Supports install, update, remove, export, and import of skills with automatic
-runtime (venv) management and host auto-registration for Claude Code and Codex.
-AI agents discover this tool via native skill entries (SKILL.md)
-and use the `smcp` CLI for all operations.
+Unified manager for AI skills and MCP servers across Claude Code and Codex.
+Install, update, remove, export, and import skills with automatic host registration
+and per-skill runtime management. AI agents discover this tool via SKILL.md
+and use the smcp CLI for all operations.
 """
 author  = "newbiee2018"
 license = "MIT"
