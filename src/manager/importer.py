@@ -117,7 +117,20 @@ def import_skill(
     manifest = SkillManifest.from_toml(toml_path)
     manifest.install_path = target_dir
 
-    # ── Step 5: Build runtime environment ──────────────────────────────
+    # ── Step 5: Validate shipped native skill entries ──────────────────────
+    native_error = _validate_native_skill_entries(manifest)
+    if native_error:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        return ImportResult(
+            success=False,
+            skill_name=skill_name,
+            install_path=target_dir,
+            env_created=False,
+            hosts_registered={},
+            message=native_error,
+        )
+
+    # ── Step 6: Build runtime environment ──────────────────────────────
     env_created = False
     try:
         if rebuild_env:
@@ -135,7 +148,7 @@ def import_skill(
             message=f"Runtime creation failed: {e}",
         )
 
-    # ── Step 6: Register with host configs ──────────────────────────────
+    # ── Step 7: Register with host configs ──────────────────────────────
     hosts_registered: Dict[str, bool] = {}
     if register_hosts:
         try:
@@ -143,12 +156,12 @@ def import_skill(
         except Exception as e:
             hosts_registered = {"error": str(e)}  # type: ignore[assignment]
 
-    # ── Step 7: Add to registry ─────────────────────────────────────────
+    # ── Step 8: Add to registry ─────────────────────────────────────────
     reg = get_registry()
     reg.register(manifest)
     reg.mark_env_ready(skill_name, env_created)
 
-    # ── Step 8: Install native skill entries + CLI wrapper ─────────────
+    # ── Step 9: Install native skill entries + CLI wrapper ─────────────
     _post_install(manifest)
 
     return ImportResult(
@@ -195,6 +208,18 @@ def import_from_dir(
 
     manifest.install_path = target_dir
 
+    native_error = _validate_native_skill_entries(manifest)
+    if native_error:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        return ImportResult(
+            success=False,
+            skill_name=skill_name,
+            install_path=target_dir,
+            env_created=False,
+            hosts_registered={},
+            message=native_error,
+        )
+
     env_created = False
     try:
         if rebuild_env:
@@ -230,6 +255,67 @@ def import_from_dir(
         hosts_registered=hosts_registered,
         message=f"Skill '{skill_name}' v{manifest.version} installed from {source_dir}",
     )
+
+
+# ────────────────────────────────────────────────────────────────────────── #
+# Validation                                                                  #
+# ────────────────────────────────────────────────────────────────────────────#
+
+def _validate_native_skill_entries(manifest: SkillManifest) -> Optional[str]:
+    skill_dir = manifest.install_path
+    if not skill_dir:
+        return None
+
+    for host in ["codex", "claude"]:
+        skill_md = skill_dir / "skills" / host / "SKILL.md"
+        if not skill_md.exists():
+            continue
+        error = _validate_native_skill_md(skill_md, manifest, host)
+        if error:
+            return error
+    return None
+
+
+def _validate_native_skill_md(path: Path, manifest: SkillManifest, host: str) -> Optional[str]:
+    rel_path = f"skills/{host}/SKILL.md"
+    try:
+        content = path.read_text()
+    except OSError as e:
+        return f"Invalid {rel_path}: cannot read file: {e}"
+
+    frontmatter = _parse_frontmatter(content)
+    if frontmatter is None:
+        return f"Invalid {rel_path}: missing YAML frontmatter"
+    if "name" not in frontmatter:
+        return f"Invalid {rel_path}: missing frontmatter name"
+    if "description" not in frontmatter:
+        return f"Invalid {rel_path}: missing frontmatter description"
+
+    actual_name = frontmatter["name"]
+    if actual_name != manifest.name:
+        return (
+            f"Invalid {rel_path}: frontmatter name '{actual_name}' "
+            f"must match manifest name '{manifest.name}'"
+        )
+    return None
+
+
+def _parse_frontmatter(content: str) -> Optional[Dict[str, str]]:
+    if not content.startswith("---\n"):
+        return None
+    end = content.find("\n---", 4)
+    if end == -1:
+        return None
+
+    frontmatter: Dict[str, str] = {}
+    for line in content[4:end].splitlines():
+        if not line.strip() or line.startswith(" "):
+            continue
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        frontmatter[key.strip()] = value.strip().strip('"\'')
+    return frontmatter
 
 
 # ────────────────────────────────────────────────────────────────────────── #
@@ -355,7 +441,7 @@ def _generate_claude_md(manifest: SkillManifest) -> str:
 # Helpers                                                                     #
 # ────────────────────────────────────────────────────────────────────────────#
 
-_SKIP_DIRS = {".venv", "venv", "env", "node_modules", "__pycache__", ".git", "target"}
+_SKIP_DIRS = {".bootstrap-venv", ".venv", "venv", "env", "node_modules", "__pycache__", ".git", "target"}
 _SKIP_SUFFIXES = {".pyc", ".pyo"}
 
 

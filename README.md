@@ -2,17 +2,21 @@
 
 Unified manager for AI skills and MCP servers across **Claude Code** and **Codex**.
 
-Install, update, remove, export, and import skills — each bundled with its source, dependencies, and host registration config in a single `skill.toml` manifest. Runtime environments (Python venv, Node node_modules) are managed per skill to keep dependencies from conflicting. AI agents discover `smcp` via native skill entries and use it for all operations.
+Install, update, remove, export, and import skills and MCP servers — each bundled with its source, dependencies, and host registration config in a single `skill.toml` manifest. Runtime environments (Python venv, Node node_modules) are managed per entry to keep dependencies from conflicting. AI agents discover `smcp` via native skill entries and use it for all operations.
+
+An MCP server (e.g., `ida-mcp`) is registered in host configs (`~/.claude.json`, `~/.codex/config.toml`) so the AI agent can call its tools via the MCP protocol. A skill (e.g., `skill-mcp-protocol` itself) provides CLI commands or description-only instructions without an MCP server registration. `smcp list` shows the type of each entry.
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/newbiee2018/skill-mcp-protocol.git
-cd skill-mcp-protocol
-python3 src/cli.py install .
+git clone https://github.com/newbiee2018/smcp.git
+cd smcp
+python3 -m venv .bootstrap-venv
+.bootstrap-venv/bin/pip install -r requirements.txt
+.bootstrap-venv/bin/python src/cli.py install .
 ```
 
-This installs the `smcp` CLI to `~/.local/bin/`, sets up dependencies, and creates native skill entries for Claude Code and Codex.
+This installs the `smcp` CLI to `~/.local/bin/`, sets up dependencies, and creates native skill entries named `skill-mcp-protocol` for Claude Code and Codex.
 
 Or use the bootstrap script:
 
@@ -25,14 +29,14 @@ Or use the bootstrap script:
 ## Usage
 
 ```bash
-smcp list                              # list installed skills
-smcp info <name>                       # details about a skill
+smcp list                              # list installed skills and MCP servers
+smcp info <name>                       # details about a skill or MCP server
 smcp install <path>                    # install from local dir
 smcp remove <name>                     # uninstall
 smcp update <name>                     # rebuild env or update from new source
 smcp export <name>                     # export to portable .skill.tar.gz
 smcp import <archive>                  # import a .skill.tar.gz
-smcp create <name> --description "..." # scaffold a new skill
+smcp create <name> --description "..." # scaffold a new skill or MCP server
 smcp register <name>                   # re-register with host configs
 smcp unregister <name>                 # remove from host configs
 smcp rebuild-env <name>               # recreate runtime environment
@@ -69,7 +73,7 @@ skill_list()
 skill_remove(name="my-skill")
 ```
 
-Enable MCP server mode first: `smcp register skill-mcp-protocol --hosts claude_code`
+Enable MCP server mode first: `smcp register skill-mcp-protocol --hosts claude_code --hosts codex`
 
 ### 3. Manual installation (when smcp is not available)
 
@@ -169,7 +173,7 @@ Exports bundle source and dependency specs into a portable `.skill.tar.gz` — r
 
 ## skill.toml Format
 
-Every managed skill needs a `skill.toml` manifest:
+Every managed skill or MCP server needs a `skill.toml` manifest:
 
 ```toml
 [skill]
@@ -192,14 +196,14 @@ claude_code = true           # register as MCP server in Claude Code
 codex = true                 # register as MCP server in Codex
 ```
 
-Set `runtime.type = "none"` for description-only skills (no venv, no MCP server).
+Set `runtime.type = "none"` for description-only skills (no venv, no MCP server). Set `hosts.claude_code` and/or `hosts.codex` to `true` to register as an MCP server in the corresponding host; set both to `false` for a CLI-only skill.
 
 ## Architecture
 
 ```
 ~/.local/share/skill-mcp/
 ├── skills/
-│   ├── my-skill/            # installed skill
+│   ├── my-skill/            # installed skill or MCP server
 │   │   ├── skill.toml       # manifest
 │   │   ├── src/             # source code
 │   │   ├── .venv/           # per-skill Python venv (auto-managed)
@@ -208,9 +212,9 @@ Set `runtime.type = "none"` for description-only skills (no venv, no MCP server)
 ├── exports/                 # exported .skill.tar.gz archives
 └── registry.toml            # installed skills registry
 
-~/.claude/skills/<name>/SKILL.md   # Claude Code native skill entry
-~/.codex/skills/<name>/SKILL.md    # Codex native skill entry
-~/.local/bin/smcp                  # CLI wrapper
+~/.claude/skills/skill-mcp-protocol/SKILL.md  # Claude Code native skill entry
+~/.codex/skills/skill-mcp-protocol/SKILL.md    # Codex native skill entry
+~/.local/bin/smcp                               # CLI wrapper
 ```
 
 ## MCP Server Mode (Optional)

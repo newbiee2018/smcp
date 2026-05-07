@@ -31,10 +31,12 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
 import tarfile
+import time
 from pathlib import Path
 
 import pytest
@@ -61,6 +63,99 @@ def _smcp(*args, env=None):
     if env:
         cmd_env.update(env)
     return _run(["smcp"] + list(args), env=cmd_env)
+
+
+def _read_mcp_response(proc: subprocess.Popen, response_id: int, timeout: int = 120) -> dict:
+    assert proc.stdout is not None
+    assert proc.stderr is not None
+    deadline = time.time() + timeout
+    stdout_lines = []
+
+    while time.time() < deadline:
+        ready, _, _ = select.select([proc.stdout], [], [], 0.1)
+        if not ready:
+            if proc.poll() is not None:
+                break
+            continue
+
+        line = proc.stdout.readline()
+        if not line:
+            if proc.poll() is not None:
+                break
+            continue
+        stdout_lines.append(line)
+        try:
+            response = json.loads(line.strip())
+        except json.JSONDecodeError:
+            continue
+        if response.get("id") == response_id:
+            return response
+
+    proc.terminate()
+    try:
+        _, stderr = proc.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        _, stderr = proc.communicate()
+    raise AssertionError(
+        f"No MCP response for id {response_id}.\n"
+        f"stdout: {''.join(stdout_lines)[:500]}\nstderr: {stderr[:500]}"
+    )
+
+
+def _mcp_call_process(command: list, tool_name: str, arguments: dict,
+                      env: dict = None, timeout: int = 120) -> dict:
+    init_msg = json.dumps({
+        "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "test", "version": "1.0"},
+        },
+    })
+    initialized_notif = json.dumps({
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized",
+    })
+    tool_msg = json.dumps({
+        "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+        "params": {"name": tool_name, "arguments": arguments},
+    })
+
+    cmd_env = os.environ.copy()
+    if env:
+        cmd_env.update(env)
+
+    proc = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=cmd_env,
+    )
+    assert proc.stdin is not None
+
+    try:
+        proc.stdin.write(init_msg + "\n")
+        proc.stdin.flush()
+        _read_mcp_response(proc, 1, timeout=timeout)
+
+        proc.stdin.write(initialized_notif + "\n")
+        proc.stdin.write(tool_msg + "\n")
+        proc.stdin.flush()
+        tool_resp = _read_mcp_response(proc, 2, timeout=timeout)
+    finally:
+        proc.terminate()
+        try:
+            proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+
+    content = tool_resp.get("result", {}).get("content", [])
+    assert content, f"Empty content in tool response: {tool_resp}"
+    return json.loads(content[0]["text"])
 
 
 def _make_test_skill(base: Path, name: str, runtime_type: str = "python",
@@ -493,51 +588,12 @@ class TestMCPServerWorkflow:
         (self.tmp / "fakehome").mkdir(exist_ok=True)
 
     def _mcp_call(self, tool_name: str, arguments: dict) -> dict:
-        """Send an MCP tool call via stdio and return the parsed result."""
-        init_msg = json.dumps({
-            "jsonrpc": "2.0", "id": 1, "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        })
-        initialized_notif = json.dumps({
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized",
-        })
-        tool_msg = json.dumps({
-            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-            "params": {"name": tool_name, "arguments": arguments},
-        })
-
-        stdin_data = init_msg + "\n" + initialized_notif + "\n" + tool_msg + "\n"
-
-        env = os.environ.copy()
-        env.update(self.mcp_env)
-
-        proc = subprocess.run(
+        return _mcp_call_process(
             [sys.executable, str(PROJECT_ROOT / "src" / "main.py")],
-            input=stdin_data, capture_output=True, text=True,
-            timeout=120, env=env,
+            tool_name,
+            arguments,
+            env=self.mcp_env,
         )
-
-        responses = []
-        for line in proc.stdout.strip().split("\n"):
-            line = line.strip()
-            if line:
-                try:
-                    responses.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
-
-        tool_resp = [r for r in responses if r.get("id") == 2]
-        assert tool_resp, f"No tool response. stderr: {proc.stderr[:500]}"
-
-        content = tool_resp[0].get("result", {}).get("content", [])
-        assert content, f"Empty content in tool response: {tool_resp[0]}"
-
-        return json.loads(content[0]["text"])
 
     def test_mcp_skill_install(self):
         """MCP skill_install tool installs a skill."""
@@ -620,8 +676,12 @@ class TestSelfUninstall:
 
         codex_home = self.tmp / "codex_home"
         fakehome = self.tmp / "fakehome"
-        assert (codex_home / "skills" / "skill-mcp-protocol" / "SKILL.md").exists()
-        assert (fakehome / ".claude" / "skills" / "skill-mcp-protocol" / "SKILL.md").exists()
+        codex_skill = codex_home / "skills" / "skill-mcp-protocol" / "SKILL.md"
+        claude_skill = fakehome / ".claude" / "skills" / "skill-mcp-protocol" / "SKILL.md"
+        assert codex_skill.exists()
+        assert claude_skill.exists()
+        assert "name: skill-mcp-protocol" in codex_skill.read_text()
+        assert "name: skill-mcp-protocol" in claude_skill.read_text()
 
         # CLI wrapper (smcp)
         assert (fakehome / ".local" / "bin" / "smcp").exists()

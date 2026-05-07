@@ -1,5 +1,6 @@
 # Virtual environments — NEVER export these, rebuild on target host
 .venv/
+.bootstrap-venv/
 venv/
 env/
 node_modules/
