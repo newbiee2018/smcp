@@ -11,8 +11,8 @@ Usage:
   smcp export <name> [--output-dir <dir>]
   smcp import <package.skill.tar.gz>
   smcp create <name> --description "..." [--runtime python|node|binary] [--author "..."]
-  smcp register <name> [--hosts claude_code codex]
-  smcp unregister <name> [--hosts claude_code codex]
+  smcp register <name> [--hosts claude_code] [--hosts codex]
+  smcp unregister <name> [--hosts claude_code] [--hosts codex]
   smcp rebuild-env <name>
 """
 from __future__ import annotations

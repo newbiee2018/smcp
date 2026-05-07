@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import tomli_w
 from manager.models import SkillManifest, RuntimeConfig
 from manager import host_config, importer, runtime as rt_mgr
-from manager.registry import Registry
+from manager.registry import Registry, get_registry
 
 
 def _write_toml(path: Path, data: dict) -> None:
@@ -227,7 +227,9 @@ class TestNativeSkillEntries(_IsolatedEnvMixin, unittest.TestCase):
         skill_dir = _make_skill(self.tmp / "skills", "custom-skill", runtime_type="none")
         custom_dir = skill_dir / "skills" / "codex"
         custom_dir.mkdir(parents=True)
-        (custom_dir / "SKILL.md").write_text("---\nname: custom\n---\nCustom content\n")
+        (custom_dir / "SKILL.md").write_text(
+            "---\nname: custom-skill\ndescription: Custom skill\n---\nCustom content\n"
+        )
         m = SkillManifest.from_toml(skill_dir / "skill.toml")
         m.install_path = skill_dir
         importer._post_install(m)
@@ -393,15 +395,18 @@ class TestSkillDiscoveryFormat(_IsolatedEnvMixin, unittest.TestCase):
             self.assertTrue(content.startswith("---"), f"{path} must have frontmatter")
 
     def test_shipped_skill_md_has_valid_format(self):
-        """The skill-mcp-protocol's own shipped SKILL.md must be valid."""
-        shipped = Path(__file__).resolve().parent.parent / "skills" / "claude" / "SKILL.md"
-        self.assertTrue(shipped.exists(), "skills/claude/SKILL.md must exist in repo")
-        content = shipped.read_text()
-        fm = self._parse_frontmatter(content)
-        self.assertIsNotNone(fm, "shipped SKILL.md must have frontmatter")
-        self.assertIn("name", fm)
-        self.assertIn("description", fm)
-        self.assertEqual(fm["name"], "smcp")
+        """The skill-mcp-protocol's own shipped SKILL.md files must be valid."""
+        repo_root = Path(__file__).resolve().parent.parent
+        for host in ["claude", "codex"]:
+            with self.subTest(host=host):
+                shipped = repo_root / "skills" / host / "SKILL.md"
+                self.assertTrue(shipped.exists(), f"skills/{host}/SKILL.md must exist in repo")
+                content = shipped.read_text()
+                fm = self._parse_frontmatter(content)
+                self.assertIsNotNone(fm, "shipped SKILL.md must have frontmatter")
+                self.assertIn("name", fm)
+                self.assertIn("description", fm)
+                self.assertEqual(fm["name"], "skill-mcp-protocol")
 
     def test_no_claude_md_created_anywhere(self):
         """Ensure no CLAUDE.md is created in skill dirs (wrong filename)."""
@@ -624,6 +629,26 @@ class TestImportFromDirNativeEntries(_IsolatedEnvMixin, unittest.TestCase):
         claude_skill = self.claude_home / ".claude" / "skills" / "desc-skill" / "SKILL.md"
         self.assertTrue(codex_skill.exists())
         self.assertTrue(claude_skill.exists())
+
+    def test_import_fails_when_native_skill_name_mismatches_manifest(self):
+        skill_dir = _make_skill(self.tmp / "source", "frontmatter-mismatch", runtime_type="none")
+        custom_dir = skill_dir / "skills" / "codex"
+        custom_dir.mkdir(parents=True)
+        (custom_dir / "SKILL.md").write_text(
+            "---\nname: wrong-name\ndescription: Wrong name\n---\n\n# Wrong\n"
+        )
+
+        result = importer.import_from_dir(skill_dir, rebuild_env=False, register_hosts=True)
+
+        self.assertFalse(result.success)
+        self.assertIn("frontmatter name 'wrong-name'", result.message)
+        self.assertIn("manifest name 'frontmatter-mismatch'", result.message)
+        self.assertFalse(get_registry().exists("frontmatter-mismatch"))
+        self.assertFalse(result.install_path.exists())
+        self.assertFalse((self.codex_home / "skills" / "frontmatter-mismatch").exists())
+        self.assertFalse(
+            (self.claude_home / ".claude" / "skills" / "frontmatter-mismatch").exists()
+        )
 
 
 if __name__ == "__main__":

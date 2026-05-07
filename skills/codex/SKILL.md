@@ -1,11 +1,11 @@
 ---
-name: smcp
+name: skill-mcp-protocol
 description: Unified manager for AI skills and MCP servers. Install, export, import, and register skills and MCP servers across Claude Code and Codex.
 metadata:
   short-description: Manage AI skills and MCP servers via the smcp CLI
 ---
 
-# smcp
+# skill-mcp-protocol
 
 Unified manager for AI skills and MCP servers across Claude Code and Codex — install, update, remove, export, import, and register them with a single CLI.
 
@@ -100,8 +100,8 @@ codex = true         # register as MCP server in Codex
 ## Manual Installation
 
 ```bash
-git clone <repo-url> /tmp/skill-mcp-protocol
-cd /tmp/skill-mcp-protocol
+git clone https://github.com/newbiee2018/smcp.git /tmp/smcp
+cd /tmp/smcp
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
@@ -109,12 +109,12 @@ python3 -m venv .venv
 mkdir -p ~/.local/bin
 cat > ~/.local/bin/smcp << 'EOF'
 #!/usr/bin/env bash
-exec "/tmp/skill-mcp-protocol/.venv/bin/python" "/tmp/skill-mcp-protocol/src/cli.py" "$@"
+exec "/tmp/smcp/.venv/bin/python" "/tmp/smcp/src/cli.py" "$@"
 EOF
 chmod +x ~/.local/bin/smcp
 
 # Or let smcp install itself properly:
-.venv/bin/python src/cli.py install /tmp/skill-mcp-protocol
+.venv/bin/python src/cli.py install /tmp/smcp
 ```
 
 ## Uninstallation

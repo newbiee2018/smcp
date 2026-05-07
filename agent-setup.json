@@ -30,16 +30,16 @@
     {
       "id":          "install",
       "type":        "run_command",
-      "description": "Install smcp using its own CLI. This copies files, sets up deps, creates native skill entries (SKILL.md), and installs the smcp binary to ~/.local/bin/.",
-      "command":     "python3 {repo_dir}/src/cli.py install {repo_dir}",
+      "description": "Install smcp using a bootstrap virtualenv. This copies files, sets up deps, creates native skill entries (SKILL.md), and installs the smcp binary to ~/.local/bin/.",
+      "command":     "python3 -m venv \"{repo_dir}/.bootstrap-venv\" && \"{repo_dir}/.bootstrap-venv/bin/pip\" install -r \"{repo_dir}/requirements.txt\" && \"{repo_dir}/.bootstrap-venv/bin/python\" \"{repo_dir}/src/cli.py\" install \"{repo_dir}\"",
       "note":        "If smcp is already in PATH, you can also run: smcp install {repo_dir}"
     },
     {
       "id":          "verify",
       "type":        "verify",
-      "description": "Verify smcp CLI is available.",
-      "command":     "smcp list",
-      "on_fail":     "Ensure ~/.local/bin is in PATH. Run: export PATH=\"$HOME/.local/bin:$PATH\""
+      "description": "Verify the smcp CLI is available and native skill entries advertise skill-mcp-protocol.",
+      "command":     "smcp list && test -f \"$HOME/.claude/skills/skill-mcp-protocol/SKILL.md\" && test -f \"${CODEX_HOME:-$HOME/.codex}/skills/skill-mcp-protocol/SKILL.md\" && grep -q '^name: skill-mcp-protocol$' \"$HOME/.claude/skills/skill-mcp-protocol/SKILL.md\" && grep -q '^name: skill-mcp-protocol$' \"${CODEX_HOME:-$HOME/.codex}/skills/skill-mcp-protocol/SKILL.md\"",
+      "on_fail":     "Ensure ~/.local/bin is in PATH. Run: export PATH=\"$HOME/.local/bin:$PATH\". If native skill checks fail, rerun: \"{repo_dir}/.bootstrap-venv/bin/python\" \"{repo_dir}/src/cli.py\" install \"{repo_dir}\""
     }
   ],
 

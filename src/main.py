@@ -478,7 +478,7 @@ async def _dispatch(name: str, args: Dict[str, Any]) -> Any:
             },
             "bootstrap_this_protocol": {
                 "step_1": "Clone or download this repo",
-                "step_2": "Run: python3 src/cli.py install .",
+                "step_2": "Run: bash bootstrap.sh",
                 "step_3": "Verify: smcp list",
                 "automated": "Or just run: bash bootstrap.sh",
             },

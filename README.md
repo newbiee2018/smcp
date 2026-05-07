@@ -9,12 +9,14 @@ An MCP server (e.g., `ida-mcp`) is registered in host configs (`~/.claude.json`,
 ## Quick Start
 
 ```bash
-git clone https://github.com/newbiee2018/skill-mcp-protocol.git
-cd skill-mcp-protocol
-python3 src/cli.py install .
+git clone https://github.com/newbiee2018/smcp.git
+cd smcp
+python3 -m venv .bootstrap-venv
+.bootstrap-venv/bin/pip install -r requirements.txt
+.bootstrap-venv/bin/python src/cli.py install .
 ```
 
-This installs the `smcp` CLI to `~/.local/bin/`, sets up dependencies, and creates native skill entries for Claude Code and Codex.
+This installs the `smcp` CLI to `~/.local/bin/`, sets up dependencies, and creates native skill entries named `skill-mcp-protocol` for Claude Code and Codex.
 
 Or use the bootstrap script:
 
@@ -71,7 +73,7 @@ skill_list()
 skill_remove(name="my-skill")
 ```
 
-Enable MCP server mode first: `smcp register skill-mcp-protocol --hosts claude_code`
+Enable MCP server mode first: `smcp register skill-mcp-protocol --hosts claude_code --hosts codex`
 
 ### 3. Manual installation (when smcp is not available)
 
@@ -210,9 +212,9 @@ Set `runtime.type = "none"` for description-only skills (no venv, no MCP server)
 ├── exports/                 # exported .skill.tar.gz archives
 └── registry.toml            # installed skills registry
 
-~/.claude/skills/<name>/SKILL.md   # Claude Code native skill entry
-~/.codex/skills/<name>/SKILL.md    # Codex native skill entry
-~/.local/bin/smcp                  # CLI wrapper
+~/.claude/skills/skill-mcp-protocol/SKILL.md  # Claude Code native skill entry
+~/.codex/skills/skill-mcp-protocol/SKILL.md    # Codex native skill entry
+~/.local/bin/smcp                               # CLI wrapper
 ```
 
 ## MCP Server Mode (Optional)
